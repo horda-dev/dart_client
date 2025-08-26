@@ -38,7 +38,7 @@ abstract class FluirFlowContext {
 
   /// Sends a [RemoteEvent] to the server and returns a [FlowResult2]
   /// after the event is handled by [Flow].
-  Future<FlowResult2> dispatchEvent(RemoteEvent event);
+  Future<FlowResult> dispatchEvent(RemoteEvent event);
 }
 
 abstract class FluirFlow extends ProxyWidget implements FluirFlowHandlers {
@@ -183,7 +183,7 @@ class FluirFlowElement extends ProxyElement
   }
 
   @override
-  Future<FlowResult2> dispatchEvent(RemoteEvent event) async {
+  Future<FlowResult> dispatchEvent(RemoteEvent event) async {
     try {
       logger.info('dispatching $event...');
 
@@ -197,7 +197,7 @@ class FluirFlowElement extends ProxyElement
 
       logger.warning(msg);
 
-      return FlowResult2.error(msg);
+      return FlowResult.error(msg);
     }
   }
 

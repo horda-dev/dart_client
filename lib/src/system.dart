@@ -117,7 +117,7 @@ class FluirClientSystem {
 
   /// Sends a [RemoteEvent] to the server and returns a [FlowResult2]
   /// after the event is handled by [Flow].
-  Future<FlowResult2> dispatchEvent(RemoteEvent event) async {
+  Future<FlowResult> dispatchEvent(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
     analyticsService?.reportMessage(
       event,

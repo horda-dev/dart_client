@@ -75,7 +75,7 @@ abstract class Connection implements ValueNotifier<FluirConnectionState> {
     Duration timeout,
   );
 
-  Future<FlowResult2> dispatchEvent(RemoteEvent event, Duration timeout);
+  Future<FlowResult> dispatchEvent(RemoteEvent event, Duration timeout);
 
   Future<void> subscribeViews(Iterable<ActorViewSub2> subs);
 
@@ -235,7 +235,7 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<FlowResult2> dispatchEvent(
+  Future<FlowResult> dispatchEvent(
     RemoteEvent event,
     Duration timeout,
   ) async {
