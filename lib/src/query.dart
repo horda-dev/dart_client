@@ -241,7 +241,7 @@ class ActorListView<S extends ActorQuery> extends ActorView {
     super.subscribe,
     required this.query,
     this.attrs = const [],
-  }) : super(name, convert: (res) => List<ActorId>.from(res));
+  }) : super(name, convert: (res) => List<EntityId>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
   final S query;
@@ -309,7 +309,7 @@ class ActorQueryHost {
 
   ActorViewHost? parent;
 
-  ActorId? actorId;
+  EntityId? actorId;
 
   ActorQueryState get state => _state;
 
@@ -337,7 +337,7 @@ class ActorQueryHost {
     child.watch(path, cb);
   }
 
-  Future<void> run(ActorId actorId) async {
+  Future<void> run(EntityId actorId) async {
     final qdef = query.queryBuilder().build();
 
     logger.fine('$actorId: running query...');
@@ -406,7 +406,7 @@ class ActorQueryHost {
     return subs;
   }
 
-  void attach(ActorId actorId, QueryResult result) {
+  void attach(EntityId actorId, QueryResult result) {
     logger.fine('${this.actorId}: attaching to $actorId...');
 
     final oldActorId = this.actorId;
@@ -558,7 +558,7 @@ abstract class ActorViewHost {
 
   final ActorQueryHost parent;
 
-  ActorId? actorId;
+  EntityId? actorId;
 
   dynamic get value => _value;
 
@@ -584,7 +584,7 @@ abstract class ActorViewHost {
     _watcher = cb;
   }
 
-  void attach(ActorId actorId, ViewQueryResult result) {
+  void attach(EntityId actorId, ViewQueryResult result) {
     logger.fine('${this.actorId}: attaching to $actorId...');
 
     final oldActorId = this.actorId;
@@ -1069,7 +1069,7 @@ class ActorRefViewHost extends ActorViewHost {
 
   late final ActorQueryHost child;
 
-  ActorId? get refId => super.value;
+  EntityId? get refId => super.value;
 
   @override
   ActorRefView get view => super.view as ActorRefView;
@@ -1107,7 +1107,7 @@ class ActorRefViewHost extends ActorViewHost {
   }
 
   @override
-  void attach(ActorId actorId, covariant RefQueryResult result) {
+  void attach(EntityId actorId, covariant RefQueryResult result) {
     super.attach(actorId, result);
 
     if (result.value != null) {
@@ -1137,7 +1137,7 @@ class ActorRefViewHost extends ActorViewHost {
   }
 
   @override
-  Future<ActorId?> project(
+  Future<EntityId?> project(
     String id,
     String name,
     Change event,
@@ -1243,7 +1243,7 @@ class ActorListViewHost extends ActorViewHost {
     super.system,
   );
 
-  Iterable<ActorId> get items => super.value;
+  Iterable<EntityId> get items => super.value;
 
   @override
   ActorListView get view => super.view as ActorListView;
@@ -1321,7 +1321,7 @@ class ActorListViewHost extends ActorViewHost {
   }
 
   @override
-  void attach(ActorId actorId, covariant ListQueryResult result) {
+  void attach(EntityId actorId, covariant ListQueryResult result) {
     assert(result.items.length == result.value.length);
 
     super.attach(actorId, result);
@@ -1345,7 +1345,7 @@ class ActorListViewHost extends ActorViewHost {
 
     final attrs = result.attrs;
     for (final pair in IterableZip([result.value, result.items])) {
-      final itemId = pair[0] as ActorId;
+      final itemId = pair[0] as EntityId;
       final result = pair[1] as QueryResult;
 
       final itemHost = view.query.childHost(
@@ -1404,7 +1404,7 @@ class ActorListViewHost extends ActorViewHost {
   }
 
   @override
-  Future<List<ActorId>> project(
+  Future<List<EntityId>> project(
     String id,
     String name,
     Change event,
@@ -1602,8 +1602,8 @@ class ActorListViewHost extends ActorViewHost {
     );
   }
 
-  final _initialChildren = <ActorId>{};
-  final _reportedChildren = <ActorId>{};
+  final _initialChildren = <EntityId>{};
+  final _reportedChildren = <EntityId>{};
 
   /// Whether <b>initial changes</b> were projected by this [ActorListViewHost].
   ///
@@ -1612,8 +1612,8 @@ class ActorListViewHost extends ActorViewHost {
   var _hasProjectedInitialChanges = false;
   var _alreadyReportedToParent = false;
 
-  final _children = <ActorId, ActorQueryHost>{};
-  final _attrHosts = <ActorId, AttributesHost>{};
+  final _children = <EntityId, ActorQueryHost>{};
+  final _attrHosts = <EntityId, AttributesHost>{};
 }
 
 abstract class InheritedModelNotifier<T> extends InheritedWidget {
@@ -1823,7 +1823,7 @@ class ActorQueryProviderElement
 
   late final Logger logger;
 
-  late final ActorId actorId;
+  late final EntityId actorId;
 
   ActorQueryProvider get provider => widget as ActorQueryProvider;
 
@@ -1874,7 +1874,7 @@ class ActorQueryProvider extends InheritedModelNotifier<ActorQueryPath> {
     required super.child,
   }) : super(key: ValueKey('$actorId/${query.runtimeType}'));
 
-  final ActorId actorId;
+  final EntityId actorId;
 
   final ActorQuery query;
 
@@ -2010,15 +2010,15 @@ class AttributesHost {
   final Logger logger;
 
   /// Id of type [String] produced by combining id of two actors via [CompositeId]
-  ActorId? id;
+  EntityId? id;
 
   bool get isAttached => id != null;
 
   String get debugId => '$viewName/$id';
 
   void start(
-    ActorId viewActorId,
-    ActorId valueActorId, [
+    EntityId viewActorId,
+    EntityId valueActorId, [
     Map<String, dynamic>? queryResAttrs,
   ]) {
     id = CompositeId(viewActorId, valueActorId).id;

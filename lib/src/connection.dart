@@ -66,11 +66,11 @@ abstract class Connection implements ValueNotifier<FluirConnectionState> {
     required QueryDef def,
   });
 
-  Future<void> send(String actorName, ActorId to, RemoteCommand cmd);
+  Future<void> send(String actorName, EntityId to, RemoteCommand cmd);
 
   Future<RemoteEvent> call(
     String actorName,
-    ActorId to,
+    EntityId to,
     RemoteCommand cmd,
     Duration timeout,
   );
@@ -183,7 +183,7 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<void> send(String actorName, ActorId to, RemoteCommand cmd) async {
+  Future<void> send(String actorName, EntityId to, RemoteCommand cmd) async {
     logger.fine('sending $cmd... to $to');
 
     var msg = SendCommandWsMsg(actorName, to, cmd);
@@ -202,7 +202,7 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   @override
   Future<RemoteEvent> call(
     String actorName,
-    ActorId to,
+    EntityId to,
     RemoteCommand cmd,
     Duration timeout,
   ) async {

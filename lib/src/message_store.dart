@@ -18,8 +18,8 @@ class ClientMessageStore {
   final Logger logger;
 
   CommandId send(
-    ActorId from,
-    ActorId to,
+    EntityId from,
+    EntityId to,
     RemoteCommand cmd, [
     bool local = false,
   ]) {
@@ -27,8 +27,8 @@ class ClientMessageStore {
   }
 
   Future<RemoteEvent> call(
-    ActorId from,
-    ActorId to,
+    EntityId from,
+    EntityId to,
     RemoteCommand cmd, [
     bool local = false,
   ]) async {
@@ -48,7 +48,7 @@ class ClientMessageStore {
 
   /// Returns an [Iterable] with one [ChangeEnvelop] which contains all past changes.
   Iterable<ChangeEnvelop> changeHistory({
-    required ActorId id,
+    required EntityId id,
     required String name,
     required String startAt,
   }) {
@@ -86,7 +86,7 @@ class ClientMessageStore {
   }
 
   String? latestStoredChangeId({
-    required ActorId id,
+    required EntityId id,
     required String name,
   }) {
     final logId = '$id/$name';
@@ -106,7 +106,7 @@ class ClientMessageStore {
   // startAt is a view state version which
   // we want to start getting events at
   Stream<ChangeEnvelop> changes({
-    required ActorId id,
+    required EntityId id,
     required String name,
     String startAt = '',
   }) {
@@ -132,7 +132,7 @@ class ClientMessageStore {
   }
 
   Stream<ChangeEnvelop> futureChanges({
-    required ActorId id,
+    required EntityId id,
     required String name,
   }) {
     return _changes.stream.where(
@@ -165,7 +165,7 @@ class ClientMessageStore {
     );
   }
 
-  ChangeEnvelop firstChange(ActorId actorId, String viewName) {
+  ChangeEnvelop firstChange(EntityId actorId, String viewName) {
     throw UnimplementedError('client message store does not support this');
   }
 
@@ -209,7 +209,7 @@ class ClientMessageStore {
   }
 
   // maps actor id to change lod
-  final _changeStore = <ActorId, List<ChangeEnvelop>>{};
+  final _changeStore = <EntityId, List<ChangeEnvelop>>{};
 
   final _changes = StreamController<ChangeEnvelop>.broadcast();
 }

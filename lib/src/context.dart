@@ -74,7 +74,7 @@ typedef ListItemSelector<L extends ActorQuery, I extends ActorQuery>
 
 extension ActorViewQueryExtensions on BuildContext {
   ActorQueryProvider runActorQuery({
-    required ActorId actorId,
+    required EntityId actorId,
     required ActorQuery query,
     required Widget child,
   }) {
@@ -87,7 +87,7 @@ extension ActorViewQueryExtensions on BuildContext {
   }
 
   ActorQueryProvider actorQuery({
-    required ActorId actorId,
+    required EntityId actorId,
     required ActorQuery query,
     required Widget child,
     Widget? loading,
@@ -173,7 +173,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
 
   // leaf
 
-  ActorId id() {
+  EntityId id() {
     return _builder.id()!;
   }
 
@@ -196,7 +196,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.counter(sel)!;
   }
 
-  ActorId refId(RefIdSelector<Q> sel) {
+  EntityId refId(RefIdSelector<Q> sel) {
     return _builder.refId(sel);
   }
 
@@ -204,7 +204,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.refValAttr<T>(sel, attrName);
   }
 
-  ActorId? maybeRefId(RefIdSelector<Q> sel) {
+  EntityId? maybeRefId(RefIdSelector<Q> sel) {
     return _builder.maybeRefId(sel);
   }
 
@@ -212,7 +212,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.maybeRefValAttr<T>(sel, attrName);
   }
 
-  ActorId listItemId(ListSelector<Q> sel, int index) {
+  EntityId listItemId(ListSelector<Q> sel, int index) {
     return _builder.listItemId(sel, index)!;
   }
 
@@ -224,7 +224,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.listItemCounterAtt(sel, attrName, index);
   }
 
-  List<ActorId> listItems(ListSelector<Q> sel) {
+  List<EntityId> listItems(ListSelector<Q> sel) {
     return _builder.listItems(sel);
   }
 
@@ -394,7 +394,7 @@ class MaybeActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.counter(sel);
   }
 
-  ActorId? refId(RefIdSelector<Q> sel) {
+  EntityId? refId(RefIdSelector<Q> sel) {
     return _builder.maybeRefId(sel);
   }
 
@@ -402,7 +402,7 @@ class MaybeActorQueryDependencyBuilder<Q extends ActorQuery> {
     throw _builder.maybeRefValAttr(sel, attrName);
   }
 
-  ActorId? listItemId(ListSelector<Q> sel, int index) {
+  EntityId? listItemId(ListSelector<Q> sel, int index) {
     return _builder.listItemId(sel, index);
   }
 
@@ -500,7 +500,7 @@ class _Builder<Q extends ActorQuery> {
 
   // leaf
 
-  ActorId? id() {
+  EntityId? id() {
     var id = host.actorId;
     if (id == null && !maybe) {
       throw FluirError('query ${host.debugId} actor id is null');
@@ -593,7 +593,7 @@ class _Builder<Q extends ActorQuery> {
     return child.value;
   }
 
-  ActorId refId(RefIdSelector<Q> sel) {
+  EntityId refId(RefIdSelector<Q> sel) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -624,7 +624,7 @@ class _Builder<Q extends ActorQuery> {
     return child.refId!;
   }
 
-  ActorId? maybeRefId(RefIdSelector<Q> sel) {
+  EntityId? maybeRefId(RefIdSelector<Q> sel) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -649,7 +649,7 @@ class _Builder<Q extends ActorQuery> {
     return child.refId;
   }
 
-  ActorId? listItemId(ListSelector<Q> sel, int index) {
+  EntityId? listItemId(ListSelector<Q> sel, int index) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -680,7 +680,7 @@ class _Builder<Q extends ActorQuery> {
     return child.items.elementAt(index);
   }
 
-  List<ActorId> listItems(ListSelector<Q> sel) {
+  List<EntityId> listItems(ListSelector<Q> sel) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 

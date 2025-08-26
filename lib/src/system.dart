@@ -67,7 +67,7 @@ class FluirClientSystem {
     }
   }
 
-  void sendRemote(String actorName, ActorId workerId, RemoteCommand cmd) {
+  void sendRemote(String actorName, EntityId workerId, RemoteCommand cmd) {
     logger.fine('sending remote command $cmd to $workerId...');
     analyticsService?.reportMessage(
       cmd,
@@ -90,7 +90,7 @@ class FluirClientSystem {
 
   Future<RemoteEvent> callRemote(
     String actorName,
-    ActorId workerId,
+    EntityId workerId,
     RemoteCommand cmd,
   ) async {
     logger.fine('calling remote command $cmd to $workerId...');
