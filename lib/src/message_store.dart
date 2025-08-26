@@ -46,14 +46,6 @@ class ClientMessageStore {
     );
   }
 
-  Stream<CommandEnvelop> commands(ActorId workerId) {
-    throw UnimplementedError();
-
-    /* logger.fine('getting commands for $workerId...');
-
-    return _commands.stream.where((e) => e.to == workerId); */
-  }
-
   /// Returns an [Iterable] with one [ChangeEnvelop2] which contains all past changes.
   Iterable<ChangeEnvelop2> changeHistory({
     required ActorId id,
