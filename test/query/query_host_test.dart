@@ -88,7 +88,7 @@ void main() {
       (itemId: 'actor4', name: 'counter-attr'): {'val': 44, 'chid': '1:0:0:0'},
     };
 
-    var rb = QueryResultBuilder2()
+    var rb = QueryResultBuilder()
       ..val('view1', 'value1', '10:0:0:0')
       ..val('view2', 'value2', '20:0:0:0')
       ..ref('ref1', 'actor2', refAttrs, '100:0:0:0', (rb) {

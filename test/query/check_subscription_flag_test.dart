@@ -68,7 +68,7 @@ void main() {
 
     final refQuery = RefQuery().rootHost('Test', system);
 
-    var rb = QueryResultBuilder2()
+    var rb = QueryResultBuilder()
       ..ref(
           'name',
           'actor2',

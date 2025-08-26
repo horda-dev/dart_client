@@ -35,7 +35,7 @@ class ClientMessageStore {
     throw UnsupportedError('for server side usage only');
   }
 
-  void publishChange(ChangeEnvelop2 change) {
+  void publishChange(ChangeEnvelop change) {
     logger.fine('publishing change $change...');
 
     _saveChange(change);
@@ -46,8 +46,8 @@ class ClientMessageStore {
     );
   }
 
-  /// Returns an [Iterable] with one [ChangeEnvelop2] which contains all past changes.
-  Iterable<ChangeEnvelop2> changeHistory({
+  /// Returns an [Iterable] with one [ChangeEnvelop] which contains all past changes.
+  Iterable<ChangeEnvelop> changeHistory({
     required ActorId id,
     required String name,
     required String startAt,
@@ -105,12 +105,12 @@ class ClientMessageStore {
 
   // startAt is a view state version which
   // we want to start getting events at
-  Stream<ChangeEnvelop2> changes({
+  Stream<ChangeEnvelop> changes({
     required ActorId id,
     required String name,
     String startAt = '',
   }) {
-    Stream<ChangeEnvelop2> past;
+    Stream<ChangeEnvelop> past;
     // TODO: do we need this?
     if (startAt != '-1') {
       past = Stream.fromIterable(
@@ -131,7 +131,7 @@ class ClientMessageStore {
     ]);
   }
 
-  Stream<ChangeEnvelop2> futureChanges({
+  Stream<ChangeEnvelop> futureChanges({
     required ActorId id,
     required String name,
   }) {
@@ -165,7 +165,7 @@ class ClientMessageStore {
     );
   }
 
-  ChangeEnvelop2 firstChange(ActorId actorId, String viewName) {
+  ChangeEnvelop firstChange(ActorId actorId, String viewName) {
     throw UnimplementedError('client message store does not support this');
   }
 
@@ -174,7 +174,7 @@ class ClientMessageStore {
     _changeStore.clear();
   }
 
-  void _saveChange(ChangeEnvelop2 e) {
+  void _saveChange(ChangeEnvelop e) {
     if (e.changes.isEmpty) {
       return;
     }
@@ -209,7 +209,7 @@ class ClientMessageStore {
   }
 
   // maps actor id to change lod
-  final _changeStore = <ActorId, List<ChangeEnvelop2>>{};
+  final _changeStore = <ActorId, List<ChangeEnvelop>>{};
 
-  final _changes = StreamController<ChangeEnvelop2>.broadcast();
+  final _changes = StreamController<ChangeEnvelop>.broadcast();
 }

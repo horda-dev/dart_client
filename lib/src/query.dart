@@ -387,7 +387,7 @@ class ActorQueryHost {
     logger.info('$actorId: unsubscribed');
   }
 
-  Iterable<ActorViewSub2> subscriptions() {
+  Iterable<ActorViewSub> subscriptions() {
     if (actorId == null) {
       logger.warning('getting subs for detached query');
       return [];
@@ -395,7 +395,7 @@ class ActorQueryHost {
 
     logger.fine('$actorId: getting subs...');
 
-    var subs = <ActorViewSub2>[];
+    var subs = <ActorViewSub>[];
 
     for (var child in _children.values) {
       subs.addAll(child.subscriptions());
@@ -406,7 +406,7 @@ class ActorQueryHost {
     return subs;
   }
 
-  void attach(ActorId actorId, QueryResult2 result) {
+  void attach(ActorId actorId, QueryResult result) {
     logger.fine('${this.actorId}: attaching to $actorId...');
 
     final oldActorId = this.actorId;
@@ -584,7 +584,7 @@ abstract class ActorViewHost {
     _watcher = cb;
   }
 
-  void attach(ActorId actorId, ViewQueryResult2 result) {
+  void attach(ActorId actorId, ViewQueryResult result) {
     logger.fine('${this.actorId}: attaching to $actorId...');
 
     final oldActorId = this.actorId;
@@ -650,7 +650,7 @@ abstract class ActorViewHost {
     actorId = null;
   }
 
-  Iterable<ActorViewSub2> subscriptions();
+  Iterable<ActorViewSub> subscriptions();
 
   /// Called by sub-queries of a view. Reports that a sub-query is ready.
   /// Not all views can have sub-queries.
@@ -733,7 +733,7 @@ abstract class ActorViewHost {
     _changeHandlersByState.remove(state);
   }
 
-  void _project(ChangeEnvelop2 env, String latestStoredChangeId) async {
+  void _project(ChangeEnvelop env, String latestStoredChangeId) async {
     if (_isProjecting) {
       _inbox.add(env);
       logger.info('$actorId: queued $env');
@@ -810,7 +810,7 @@ abstract class ActorViewHost {
     logger.info('$actorId: inbox processed');
   }
 
-  Future<void> _projectLast(ChangeEnvelop2 env) async {
+  Future<void> _projectLast(ChangeEnvelop env) async {
     // Project last change included in ChangeEnvelop2
     final lastChange = env.changes.last;
 
@@ -851,7 +851,7 @@ abstract class ActorViewHost {
     );
   }
 
-  Future<void> _projectAll(ChangeEnvelop2 env) async {
+  Future<void> _projectAll(ChangeEnvelop env) async {
     // Project every change included in ChangeEnvelop2
     for (final change in env.changes) {
       final nextValue = await project(
@@ -908,9 +908,9 @@ abstract class ActorViewHost {
   dynamic _value;
   String _changeId = ''; // what should be initial value of changeId?
   bool _isProjecting = false;
-  StreamSubscription<ChangeEnvelop2>? _sub;
+  StreamSubscription<ChangeEnvelop>? _sub;
   ActorQueryPathFunc? _watcher;
-  final _inbox = Queue<ChangeEnvelop2>();
+  final _inbox = Queue<ChangeEnvelop>();
 
   /// Key - type
   /// Value - list of change handlers for the type
@@ -945,7 +945,7 @@ class ActorValueViewHost<T> extends ActorViewHost {
   }
 
   @override
-  Iterable<ActorViewSub2> subscriptions() {
+  Iterable<ActorViewSub> subscriptions() {
     if (actorId == null) {
       logger.warning('getting subs for detached view');
       return [];
@@ -958,7 +958,7 @@ class ActorValueViewHost<T> extends ActorViewHost {
           ) ??
           changeId;
       return [
-        ActorViewSub2(actorId!, view.name, latestChangeId),
+        ActorViewSub(actorId!, view.name, latestChangeId),
       ];
     } else {
       return [];
@@ -1010,7 +1010,7 @@ class ActorCounterViewHost extends ActorViewHost {
   }
 
   @override
-  Iterable<ActorViewSub2> subscriptions() {
+  Iterable<ActorViewSub> subscriptions() {
     if (actorId == null) {
       logger.warning('getting subs for detached view');
       return [];
@@ -1023,7 +1023,7 @@ class ActorCounterViewHost extends ActorViewHost {
           ) ??
           changeId;
       return [
-        ActorViewSub2(actorId!, view.name, latestChangeId),
+        ActorViewSub(actorId!, view.name, latestChangeId),
       ];
     } else {
       return [];
@@ -1107,7 +1107,7 @@ class ActorRefViewHost extends ActorViewHost {
   }
 
   @override
-  void attach(ActorId actorId, covariant RefQueryResult2 result) {
+  void attach(ActorId actorId, covariant RefQueryResult result) {
     super.attach(actorId, result);
 
     if (result.value != null) {
@@ -1172,7 +1172,7 @@ class ActorRefViewHost extends ActorViewHost {
   }
 
   @override
-  Iterable<ActorViewSub2> subscriptions() {
+  Iterable<ActorViewSub> subscriptions() {
     if (actorId == null) {
       logger.warning('getting subs for detached view');
       return [];
@@ -1180,7 +1180,7 @@ class ActorRefViewHost extends ActorViewHost {
 
     logger.fine('$actorId: getting subs...');
 
-    final subs = <ActorViewSub2>[];
+    final subs = <ActorViewSub>[];
 
     if (view.subscribe) {
       final latestChangeId = system.latestStoredChangeIdOf(
@@ -1188,7 +1188,7 @@ class ActorRefViewHost extends ActorViewHost {
             name: view.name,
           ) ??
           changeId;
-      subs.add(ActorViewSub2(actorId!, view.name, latestChangeId));
+      subs.add(ActorViewSub(actorId!, view.name, latestChangeId));
     }
 
     if (refId != null) {
@@ -1321,7 +1321,7 @@ class ActorListViewHost extends ActorViewHost {
   }
 
   @override
-  void attach(ActorId actorId, covariant ListQueryResult2 result) {
+  void attach(ActorId actorId, covariant ListQueryResult result) {
     assert(result.items.length == result.value.length);
 
     super.attach(actorId, result);
@@ -1346,7 +1346,7 @@ class ActorListViewHost extends ActorViewHost {
     final attrs = result.attrs;
     for (final pair in IterableZip([result.value, result.items])) {
       final itemId = pair[0] as ActorId;
-      final result = pair[1] as QueryResult2;
+      final result = pair[1] as QueryResult;
 
       final itemHost = view.query.childHost(
         '$parentLoggerName.${view.name}',
@@ -1479,7 +1479,7 @@ class ActorListViewHost extends ActorViewHost {
       }
       _attrHosts.clear();
 
-      final subs = <ActorViewSub2>[];
+      final subs = <ActorViewSub>[];
       for (final host in _children.values) {
         subs.addAll(host.subscriptions());
         host.stop();
@@ -1499,7 +1499,7 @@ class ActorListViewHost extends ActorViewHost {
   }
 
   @override
-  Iterable<ActorViewSub2> subscriptions() {
+  Iterable<ActorViewSub> subscriptions() {
     if (actorId == null) {
       logger.warning('getting subs for detached view');
       return [];
@@ -1507,7 +1507,7 @@ class ActorListViewHost extends ActorViewHost {
 
     logger.fine('$actorId: getting subs...');
 
-    final subs = <ActorViewSub2>[];
+    final subs = <ActorViewSub>[];
 
     if (view.subscribe) {
       final latestChangeId = system.latestStoredChangeIdOf(
@@ -1515,7 +1515,7 @@ class ActorListViewHost extends ActorViewHost {
             name: view.name,
           ) ??
           changeId;
-      subs.add(ActorViewSub2(actorId!, view.name, latestChangeId));
+      subs.add(ActorViewSub(actorId!, view.name, latestChangeId));
     }
 
     for (final child in _children.values) {
@@ -2091,8 +2091,8 @@ class AttributesHost {
     logger.fine('stopped attrHost $oldDebugId');
   }
 
-  Iterable<ActorViewSub2> subscriptions() {
-    final viewSubs = <ActorViewSub2>[];
+  Iterable<ActorViewSub> subscriptions() {
+    final viewSubs = <ActorViewSub>[];
 
     for (final MapEntry(key: name, value: attr) in _attrs.entries) {
       final latestChangeId = system.latestStoredChangeIdOf(
@@ -2100,7 +2100,7 @@ class AttributesHost {
             name: viewName,
           ) ??
           attr['version'] as String;
-      viewSubs.add(ActorViewSub2(id!, name, latestChangeId));
+      viewSubs.add(ActorViewSub(id!, name, latestChangeId));
     }
 
     return viewSubs;
@@ -2163,7 +2163,7 @@ class AttributesHost {
     return attrValue;
   }
 
-  void _project(String name, Map<String, dynamic> attr, ChangeEnvelop2 env) {
+  void _project(String name, Map<String, dynamic> attr, ChangeEnvelop env) {
     logger.fine('$debugId: projecting $env...');
 
     if (!isAttached) {
@@ -2232,7 +2232,7 @@ class AttributesHost {
   Future<void> _projectLast(
     String name,
     Map<String, dynamic> attr,
-    ChangeEnvelop2 env,
+    ChangeEnvelop env,
   ) async {
     final lastChange = env.changes.last;
     final wasCreated = attr.isEmpty;
@@ -2256,7 +2256,7 @@ class AttributesHost {
   Future<void> _projectAll(
     String name,
     Map<String, dynamic> attr,
-    ChangeEnvelop2 env,
+    ChangeEnvelop env,
   ) async {
     for (final change in env.changes) {
       if (attr.isEmpty) {
@@ -2281,10 +2281,10 @@ class AttributesHost {
 
   dynamic _getProjectedValue(Map<String, dynamic> attr, Change change) {
     return switch (change) {
-      RefValueAttributeChanged2() => _onRefValueAttributeChanged(attr, change),
-      CounterAttrIncremented2() => _onCounterAttrIncremented(attr, change),
-      CounterAttrDecremented2() => _onCounterAttrDecremented(attr, change),
-      CounterAttrReset2() => _onCounterAttrReset(attr, change),
+      RefValueAttributeChanged() => _onRefValueAttributeChanged(attr, change),
+      CounterAttrIncremented() => _onCounterAttrIncremented(attr, change),
+      CounterAttrDecremented() => _onCounterAttrDecremented(attr, change),
+      CounterAttrReset() => _onCounterAttrReset(attr, change),
       _ => throw FluirError(
           'Unsupported attribute change type - ${change.runtimeType}.'),
     };
@@ -2292,28 +2292,28 @@ class AttributesHost {
 
   dynamic _onRefValueAttributeChanged(
     Map<String, dynamic> attr,
-    RefValueAttributeChanged2 change,
+    RefValueAttributeChanged change,
   ) {
     return change.newValue;
   }
 
   dynamic _onCounterAttrIncremented(
     Map<String, dynamic> attr,
-    CounterAttrIncremented2 change,
+    CounterAttrIncremented change,
   ) {
     return (attr['value'] ?? 0) + change.by;
   }
 
   dynamic _onCounterAttrDecremented(
     Map<String, dynamic> attr,
-    CounterAttrDecremented2 change,
+    CounterAttrDecremented change,
   ) {
     return (attr['value'] ?? 0) - change.by;
   }
 
   dynamic _onCounterAttrReset(
     Map<String, dynamic> attr,
-    CounterAttrReset2 change,
+    CounterAttrReset change,
   ) {
     return change.newValue;
   }
@@ -2324,7 +2324,7 @@ class AttributesHost {
 
   /// Key is attribute name
   /// Value is the subscription to attribute's changes
-  final _subs = <String, StreamSubscription<ChangeEnvelop2>>{};
+  final _subs = <String, StreamSubscription<ChangeEnvelop>>{};
 
   ActorQueryPathFunc? _watcher;
 }

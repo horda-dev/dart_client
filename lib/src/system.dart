@@ -136,11 +136,11 @@ class FluirClientSystem {
     return res;
   }
 
-  void publishChange(ChangeEnvelop2 env, {bool save = true}) {
+  void publishChange(ChangeEnvelop env, {bool save = true}) {
     messageStore.publishChange(env);
   }
 
-  Future<QueryResult2> query({
+  Future<QueryResult> query({
     required String actorId,
     required String name,
     required QueryDef def,
@@ -152,7 +152,7 @@ class FluirClientSystem {
     );
   }
 
-  Future<void> subscribeViews(Iterable<ActorViewSub2> subs) async {
+  Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
     final readyToSub = _incViewSubCount(subs);
 
     final alreadySubbed = subs.toSet().difference(readyToSub.toSet());
@@ -166,7 +166,7 @@ class FluirClientSystem {
     for (final sub in alreadySubbed) {
       logger.info('$sub is already subbed, publishing empty change envelop...');
       publishChange(
-        ChangeEnvelop2.empty(key: sub.id, name: sub.name),
+        ChangeEnvelop.empty(key: sub.id, name: sub.name),
       );
     }
 
@@ -189,7 +189,7 @@ class FluirClientSystem {
     }
   }
 
-  Future<void> unsubscribeViews(Iterable<ActorViewSub2> subs) async {
+  Future<void> unsubscribeViews(Iterable<ActorViewSub> subs) async {
     final readyToUnsub = _decViewSubCount(subs);
 
     if (readyToUnsub.isEmpty) {
@@ -223,10 +223,10 @@ class FluirClientSystem {
     );
   }
 
-  /// Returns a [Stream] of [ChangeEnvelop2]s which includes both change history and future changes.
+  /// Returns a [Stream] of [ChangeEnvelop]s which includes both change history and future changes.
   ///
   /// [startAt] is a change id which we want to start getting changes at from history.
-  Stream<ChangeEnvelop2> changes({
+  Stream<ChangeEnvelop> changes({
     required String id,
     required String name,
     String startAt = '',
@@ -238,11 +238,11 @@ class FluirClientSystem {
     );
   }
 
-  /// Returns an [Iterable] of [ChangeEnvelop2]s from view(or attribute)'s change history,
+  /// Returns an [Iterable] of [ChangeEnvelop]s from view(or attribute)'s change history,
   /// or an empty [Iterable] if there's no history.
   ///
   /// [startAt] is a change id which we want to start getting changes at from history.
-  Iterable<ChangeEnvelop2> changeHistory({
+  Iterable<ChangeEnvelop> changeHistory({
     required String id,
     required String name,
     String startAt = '',
@@ -254,8 +254,8 @@ class FluirClientSystem {
     );
   }
 
-  /// Returns a [Stream] of [ChangeEnvelop2]s which emits future changes which are coming from the server.
-  Stream<ChangeEnvelop2> futureChanges({
+  /// Returns a [Stream] of [ChangeEnvelop]s which emits future changes which are coming from the server.
+  Stream<ChangeEnvelop> futureChanges({
     required String id,
     required String name,
   }) {
@@ -270,9 +270,9 @@ class FluirClientSystem {
     messageStore.clear();
   }
 
-  /// Increments the host count for every provided [ActorViewSub2] and returns [ActorViewSub2]s which should be subscribed.
-  Iterable<ActorViewSub2> _incViewSubCount(Iterable<ActorViewSub2> subs) {
-    final viewsToSub = <ActorViewSub2>[];
+  /// Increments the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should be subscribed.
+  Iterable<ActorViewSub> _incViewSubCount(Iterable<ActorViewSub> subs) {
+    final viewsToSub = <ActorViewSub>[];
 
     for (final sub in subs) {
       final subKey = '${sub.id}/${sub.name}';
@@ -295,9 +295,9 @@ class FluirClientSystem {
     return viewsToSub;
   }
 
-  /// Decrements the host count for every provided [ActorViewSub2] and returns [ActorViewSub2]s which should to be unsubscribed.
-  Iterable<ActorViewSub2> _decViewSubCount(Iterable<ActorViewSub2> subs) {
-    final viewsToUnsub = <ActorViewSub2>[];
+  /// Decrements the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should to be unsubscribed.
+  Iterable<ActorViewSub> _decViewSubCount(Iterable<ActorViewSub> subs) {
+    final viewsToUnsub = <ActorViewSub>[];
 
     for (final sub in subs) {
       final subKey = '${sub.id}/${sub.name}';
