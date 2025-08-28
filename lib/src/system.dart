@@ -16,10 +16,10 @@ class FluirClientSystem {
     this.analyticsService,
     this.errorTrackingService,
   }) : authState = ValueNotifier<FluirAuthState>(
-          connectionConfig is IncognitoConfig
-              ? AuthStateIncognito()
-              : AuthStateValidating(),
-        ) {
+         connectionConfig is IncognitoConfig
+             ? AuthStateIncognito()
+             : AuthStateValidating(),
+       ) {
     logger = Logger('Fluir.System');
     conn = WebSocketConnection(this, connectionConfig);
     messageStore = ClientMessageStore(this, conn);
@@ -67,7 +67,7 @@ class FluirClientSystem {
     }
   }
 
-  void sendRemote(String actorName, ActorId workerId, RemoteCommand cmd) {
+  void sendRemote(String actorName, EntityId workerId, RemoteCommand cmd) {
     logger.fine('sending remote command $cmd to $workerId...');
     analyticsService?.reportMessage(
       cmd,
@@ -90,7 +90,7 @@ class FluirClientSystem {
 
   Future<RemoteEvent> callRemote(
     String actorName,
-    ActorId workerId,
+    EntityId workerId,
     RemoteCommand cmd,
   ) async {
     logger.fine('calling remote command $cmd to $workerId...');
@@ -117,42 +117,30 @@ class FluirClientSystem {
 
   /// Sends a [RemoteEvent] to the server and returns a [FlowResult2]
   /// after the event is handled by [Flow].
-  Future<FlowResult2> dispatchEvent(RemoteEvent event) async {
+  Future<FlowResult> dispatchEvent(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
-    analyticsService?.reportMessage(
-      event,
-      DispatchLabels(
-        senderId: _senderId,
-      ),
-    );
+    analyticsService?.reportMessage(event, DispatchLabels(senderId: _senderId));
 
-    final res = await conn.dispatchEvent(
-      event,
-      const Duration(seconds: 10),
-    );
+    final res = await conn.dispatchEvent(event, const Duration(seconds: 10));
 
     logger.info('dispatched event $event');
 
     return res;
   }
 
-  void publishChange(ChangeEnvelop2 env, {bool save = true}) {
+  void publishChange(ChangeEnvelop env, {bool save = true}) {
     messageStore.publishChange(env);
   }
 
-  Future<QueryResult2> query({
+  Future<QueryResult> query({
     required String actorId,
     required String name,
     required QueryDef def,
   }) {
-    return conn.query(
-      actorId: actorId,
-      name: name,
-      def: def,
-    );
+    return conn.query(actorId: actorId, name: name, def: def);
   }
 
-  Future<void> subscribeViews(Iterable<ActorViewSub2> subs) async {
+  Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
     final readyToSub = _incViewSubCount(subs);
 
     final alreadySubbed = subs.toSet().difference(readyToSub.toSet());
@@ -165,9 +153,7 @@ class FluirClientSystem {
     // Therefore manually publish an empty ChangeEnvelop2 to let view report as ready.
     for (final sub in alreadySubbed) {
       logger.info('$sub is already subbed, publishing empty change envelop...');
-      publishChange(
-        ChangeEnvelop2.empty(key: sub.id, name: sub.name),
-      );
+      publishChange(ChangeEnvelop.empty(key: sub.id, name: sub.name));
     }
 
     if (readyToSub.isEmpty) {
@@ -189,7 +175,7 @@ class FluirClientSystem {
     }
   }
 
-  Future<void> unsubscribeViews(Iterable<ActorViewSub2> subs) async {
+  Future<void> unsubscribeViews(Iterable<ActorViewSub> subs) async {
     final readyToUnsub = _decViewSubCount(subs);
 
     if (readyToUnsub.isEmpty) {
@@ -213,56 +199,39 @@ class FluirClientSystem {
 
   /// Returns the number of the latest stored version of a view or attribute.
   /// Will return null if view has no locally stored history.
-  String? latestStoredChangeIdOf({
-    required String id,
-    required String name,
-  }) {
-    return messageStore.latestStoredChangeId(
-      id: id,
-      name: name,
-    );
+  String? latestStoredChangeIdOf({required String id, required String name}) {
+    return messageStore.latestStoredChangeId(id: id, name: name);
   }
 
-  /// Returns a [Stream] of [ChangeEnvelop2]s which includes both change history and future changes.
+  /// Returns a [Stream] of [ChangeEnvelop]s which includes both change history and future changes.
   ///
   /// [startAt] is a change id which we want to start getting changes at from history.
-  Stream<ChangeEnvelop2> changes({
+  Stream<ChangeEnvelop> changes({
     required String id,
     required String name,
     String startAt = '',
   }) {
-    return messageStore.changes(
-      id: id,
-      name: name,
-      startAt: startAt,
-    );
+    return messageStore.changes(id: id, name: name, startAt: startAt);
   }
 
-  /// Returns an [Iterable] of [ChangeEnvelop2]s from view(or attribute)'s change history,
+  /// Returns an [Iterable] of [ChangeEnvelop]s from view(or attribute)'s change history,
   /// or an empty [Iterable] if there's no history.
   ///
   /// [startAt] is a change id which we want to start getting changes at from history.
-  Iterable<ChangeEnvelop2> changeHistory({
+  Iterable<ChangeEnvelop> changeHistory({
     required String id,
     required String name,
     String startAt = '',
   }) {
-    return messageStore.changeHistory(
-      id: id,
-      name: name,
-      startAt: startAt,
-    );
+    return messageStore.changeHistory(id: id, name: name, startAt: startAt);
   }
 
-  /// Returns a [Stream] of [ChangeEnvelop2]s which emits future changes which are coming from the server.
-  Stream<ChangeEnvelop2> futureChanges({
+  /// Returns a [Stream] of [ChangeEnvelop]s which emits future changes which are coming from the server.
+  Stream<ChangeEnvelop> futureChanges({
     required String id,
     required String name,
   }) {
-    return messageStore.futureChanges(
-      id: id,
-      name: name,
-    );
+    return messageStore.futureChanges(id: id, name: name);
   }
 
   /// Clears local storage of [Change]s and [RemoteEvent]s.
@@ -270,9 +239,9 @@ class FluirClientSystem {
     messageStore.clear();
   }
 
-  /// Increments the host count for every provided [ActorViewSub2] and returns [ActorViewSub2]s which should be subscribed.
-  Iterable<ActorViewSub2> _incViewSubCount(Iterable<ActorViewSub2> subs) {
-    final viewsToSub = <ActorViewSub2>[];
+  /// Increments the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should be subscribed.
+  Iterable<ActorViewSub> _incViewSubCount(Iterable<ActorViewSub> subs) {
+    final viewsToSub = <ActorViewSub>[];
 
     for (final sub in subs) {
       final subKey = '${sub.id}/${sub.name}';
@@ -295,9 +264,9 @@ class FluirClientSystem {
     return viewsToSub;
   }
 
-  /// Decrements the host count for every provided [ActorViewSub2] and returns [ActorViewSub2]s which should to be unsubscribed.
-  Iterable<ActorViewSub2> _decViewSubCount(Iterable<ActorViewSub2> subs) {
-    final viewsToUnsub = <ActorViewSub2>[];
+  /// Decrements the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should to be unsubscribed.
+  Iterable<ActorViewSub> _decViewSubCount(Iterable<ActorViewSub> subs) {
+    final viewsToUnsub = <ActorViewSub>[];
 
     for (final sub in subs) {
       final subKey = '${sub.id}/${sub.name}';
@@ -347,10 +316,7 @@ class FluirClientSystem {
 
 class TestFluirClientSystem extends FluirClientSystem {
   TestFluirClientSystem()
-      : super(
-          IncognitoConfig(url: '', apiKey: ''),
-          TestAuthProvider(),
-        );
+    : super(IncognitoConfig(url: '', apiKey: ''), TestAuthProvider());
 
   void start() {
     // noop

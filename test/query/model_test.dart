@@ -28,9 +28,7 @@ class TestWidgetA extends StatelessWidget {
       aspect: 'a',
     );
 
-    return Center(
-      child: Text('widget a: ${model.valueA}/${model.valueB}'),
-    );
+    return Center(child: Text('widget a: ${model.valueA}/${model.valueB}'));
   }
 }
 
@@ -44,30 +42,20 @@ class TestWidgetB extends StatelessWidget {
       aspect: 'b',
     );
 
-    return Center(
-      child: Text('widget b: ${model.valueA}/${model.valueB}'),
-    );
+    return Center(child: Text('widget b: ${model.valueA}/${model.valueB}'));
   }
 }
 
 void main() {
   group('InheritedModelNotifier', () {
-    testWidgets('should trigger widget rebuild based on aspect',
-        (tester) async {
+    testWidgets('should trigger widget rebuild based on aspect', (
+      tester,
+    ) async {
       var model = TestModel(
-        child: const Column(
-          children: [
-            TestWidgetA(),
-            TestWidgetB(),
-          ],
-        ),
+        child: const Column(children: [TestWidgetA(), TestWidgetB()]),
       );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: model,
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: model));
 
       // wait for bottom sheet animation completion
 

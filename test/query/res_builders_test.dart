@@ -10,21 +10,23 @@ void main() {
       (itemId: 'actor4', name: 'attr4'): {'val': 44, 'chid': '1'},
     };
 
-    var rb = QueryResultBuilder2()
+    var rb = QueryResultBuilder()
       ..val('view11', 'value11', '11')
       ..val('view12', 'value12', '12')
       ..ref(
-          'ref1',
-          'actor2',
-          {
-            'attr1': {'val': 'a1', 'chid': '1'},
-            'attr2': {'val': 20, 'chid': '1'},
-          },
-          '101', (rb) {
-        rb
-          ..val('view21', 'value21', '21')
-          ..val('view22', 'value22', '22');
-      })
+        'ref1',
+        'actor2',
+        {
+          'attr1': {'val': 'a1', 'chid': '1'},
+          'attr2': {'val': 20, 'chid': '1'},
+        },
+        '101',
+        (rb) {
+          rb
+            ..val('view21', 'value21', '21')
+            ..val('view22', 'value22', '22');
+        },
+      )
       ..list('list1', attrs, '201', (rb) {
         rb
           ..item('actor3', (rb) {
@@ -45,7 +47,7 @@ void main() {
 
     var v11 = res.views['view11'];
     expect(v11, isNotNull);
-    expect(v11, isA<ValueQueryResult2>());
+    expect(v11, isA<ValueQueryResult>());
     expect(v11!.value, 'value11');
     expect(v11.changeId, '11');
 
@@ -53,15 +55,15 @@ void main() {
 
     var v12 = res.views['view12'];
     expect(v12, isNotNull);
-    expect(v12, isA<ValueQueryResult2>());
+    expect(v12, isA<ValueQueryResult>());
     expect(v12!.value, 'value12');
     expect(v12.changeId, '12');
 
     // ref1
 
-    var ref1 = res.views['ref1'] as RefQueryResult2;
+    var ref1 = res.views['ref1'] as RefQueryResult;
     expect(ref1, isNotNull);
-    expect(ref1, isA<RefQueryResult2>());
+    expect(ref1, isA<RefQueryResult>());
     expect(ref1.value, 'actor2');
     expect(ref1.changeId, '101');
     expect(ref1.attrs, {
@@ -73,7 +75,7 @@ void main() {
 
     var v21 = ref1.query?.views['view21'];
     expect(v21, isNotNull);
-    expect(v21, isA<ValueQueryResult2>());
+    expect(v21, isA<ValueQueryResult>());
     expect(v21!.value, 'value21');
     expect(v21.changeId, '21');
 
@@ -81,15 +83,15 @@ void main() {
 
     var v22 = ref1.query?.views['view22'];
     expect(v22, isNotNull);
-    expect(v22, isA<ValueQueryResult2>());
+    expect(v22, isA<ValueQueryResult>());
     expect(v22!.value, 'value22');
     expect(v22.changeId, '22');
 
     // list1
 
-    var list1 = res.views['list1'] as ListQueryResult2;
+    var list1 = res.views['list1'] as ListQueryResult;
     expect(list1, isNotNull);
-    expect(list1, isA<ListQueryResult2>());
+    expect(list1, isA<ListQueryResult>());
     expect(list1.value, ['actor3', 'actor4']);
     expect(list1.changeId, '201');
     expect(list1.attrs, {
@@ -110,7 +112,7 @@ void main() {
 
     var v100 = actor3.views['view100'];
     expect(v100, isNotNull);
-    expect(v100, isA<ValueQueryResult2>());
+    expect(v100, isA<ValueQueryResult>());
     expect(v100!.value, 'value3100');
     expect(v100.changeId, '3100');
 
@@ -118,7 +120,7 @@ void main() {
 
     var v110 = actor3.views['view110'];
     expect(v110, isNotNull);
-    expect(v110, isA<ValueQueryResult2>());
+    expect(v110, isA<ValueQueryResult>());
     expect(v110!.value, 'value3110');
     expect(v110.changeId, '3110');
 
@@ -129,7 +131,7 @@ void main() {
 
     v100 = actor4.views['view100'];
     expect(v100, isNotNull);
-    expect(v100, isA<ValueQueryResult2>());
+    expect(v100, isA<ValueQueryResult>());
     expect(v100!.value, 'value4100');
     expect(v100.changeId, '4100');
 
@@ -137,7 +139,7 @@ void main() {
 
     v110 = actor4.views['view110'];
     expect(v110, isNotNull);
-    expect(v110, isA<ValueQueryResult2>());
+    expect(v110, isA<ValueQueryResult>());
     expect(v110!.value, 'value4110');
     expect(v110.changeId, '4110');
   });
@@ -150,21 +152,23 @@ void main() {
       (itemId: 'actor4', name: 'attr4'): {'val': 44, 'chid': '1'},
     };
 
-    var rb = QueryResultBuilder2()
+    var rb = QueryResultBuilder()
       ..val('view11', 'value11', '11')
       ..val('view12', 'value12', '12')
       ..ref(
-          'ref1',
-          'actor2',
-          {
-            'attr1': {'val': 'a1', 'chid': '1'},
-            'attr2': {'val': 20, 'chid': '1'},
-          },
-          '101', (rb) {
-        rb
-          ..val('view21', 'value21', '21')
-          ..val('view22', 'value22', '22');
-      })
+        'ref1',
+        'actor2',
+        {
+          'attr1': {'val': 'a1', 'chid': '1'},
+          'attr2': {'val': 20, 'chid': '1'},
+        },
+        '101',
+        (rb) {
+          rb
+            ..val('view21', 'value21', '21')
+            ..val('view22', 'value22', '22');
+        },
+      )
       ..list('list1', attrs, '201', (rb) {
         rb
           ..item('actor3', (rb) {
@@ -182,16 +186,8 @@ void main() {
     var qr = rb.build();
 
     expect(qr.toJson(), {
-      'view11': {
-        'type': 'val',
-        'val': 'value11',
-        'chid': '11',
-      },
-      'view12': {
-        'type': 'val',
-        'val': 'value12',
-        'chid': '12',
-      },
+      'view11': {'type': 'val', 'val': 'value11', 'chid': '11'},
+      'view12': {'type': 'val', 'val': 'value12', 'chid': '12'},
       'ref1': {
         'type': 'ref',
         'val': 'actor2',
@@ -201,16 +197,8 @@ void main() {
           'attr2': {'val': 20, 'chid': '1'},
         },
         'ref': {
-          'view21': {
-            'type': 'val',
-            'val': 'value21',
-            'chid': '21',
-          },
-          'view22': {
-            'type': 'val',
-            'val': 'value22',
-            'chid': '22',
-          },
+          'view21': {'type': 'val', 'val': 'value21', 'chid': '21'},
+          'view22': {'type': 'val', 'val': 'value22', 'chid': '22'},
         },
       },
       'list1': {
@@ -229,28 +217,12 @@ void main() {
         'chid': '201',
         'items': [
           {
-            'view100': {
-              'type': 'val',
-              'val': 'value3100',
-              'chid': '3100',
-            },
-            'view110': {
-              'type': 'val',
-              'val': 'value3110',
-              'chid': '3110',
-            },
+            'view100': {'type': 'val', 'val': 'value3100', 'chid': '3100'},
+            'view110': {'type': 'val', 'val': 'value3110', 'chid': '3110'},
           },
           {
-            'view100': {
-              'type': 'val',
-              'val': 'value4100',
-              'chid': '4100',
-            },
-            'view110': {
-              'type': 'val',
-              'val': 'value4110',
-              'chid': '4110',
-            },
+            'view100': {'type': 'val', 'val': 'value4100', 'chid': '4100'},
+            'view110': {'type': 'val', 'val': 'value4110', 'chid': '4110'},
           },
         ],
       },

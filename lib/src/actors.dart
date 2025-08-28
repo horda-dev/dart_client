@@ -8,20 +8,15 @@ import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
 
-typedef FluirActorHandler<C extends LocalCommand> = Future<void> Function(
-  C cmd,
-  FluirActorContext context,
-);
+typedef FluirActorHandler<C extends LocalCommand> =
+    Future<void> Function(C cmd, FluirActorContext context);
 
 abstract class FluirActorContext {
   Logger get logger;
 }
 
 class FluirActor {
-  FluirActor({
-    required this.name,
-    required this.context,
-  });
+  FluirActor({required this.name, required this.context});
 
   final String name;
 
@@ -106,7 +101,7 @@ class _ProxyActorElement extends ProxyElement
     with NotifiableElementMixin
     implements FluirActorContext, FluirActorHandlers {
   _ProxyActorElement(super.widget)
-      : logger = Logger('Fluir.Actor.${widget.runtimeType}') {
+    : logger = Logger('Fluir.Actor.${widget.runtimeType}') {
     _actor = FluirActor(name: widget.runtimeType.toString(), context: this);
   }
 

@@ -9,7 +9,7 @@ import 'system.dart';
 
 class ClientMessageStore {
   ClientMessageStore(this.system, this.conn)
-      : logger = Logger('Fluir.MessageStore');
+    : logger = Logger('Fluir.MessageStore');
 
   final FluirClientSystem system;
 
@@ -18,8 +18,8 @@ class ClientMessageStore {
   final Logger logger;
 
   CommandId send(
-    ActorId from,
-    ActorId to,
+    EntityId from,
+    EntityId to,
     RemoteCommand cmd, [
     bool local = false,
   ]) {
@@ -27,36 +27,26 @@ class ClientMessageStore {
   }
 
   Future<RemoteEvent> call(
-    ActorId from,
-    ActorId to,
+    EntityId from,
+    EntityId to,
     RemoteCommand cmd, [
     bool local = false,
   ]) async {
     throw UnsupportedError('for server side usage only');
   }
 
-  void publishChange(ChangeEnvelop2 change) {
+  void publishChange(ChangeEnvelop change) {
     logger.fine('publishing change $change...');
 
     _saveChange(change);
     _changes.add(change);
 
-    logger.info(
-      'published change $change from ${change.sourceId}',
-    );
+    logger.info('published change $change from ${change.sourceId}');
   }
 
-  Stream<CommandEnvelop> commands(ActorId workerId) {
-    throw UnimplementedError();
-
-    /* logger.fine('getting commands for $workerId...');
-
-    return _commands.stream.where((e) => e.to == workerId); */
-  }
-
-  /// Returns an [Iterable] with one [ChangeEnvelop2] which contains all past changes.
-  Iterable<ChangeEnvelop2> changeHistory({
-    required ActorId id,
+  /// Returns an [Iterable] with one [ChangeEnvelop] which contains all past changes.
+  Iterable<ChangeEnvelop> changeHistory({
+    required EntityId id,
     required String name,
     required String startAt,
   }) {
@@ -93,10 +83,7 @@ class ClientMessageStore {
     return [...range];
   }
 
-  String? latestStoredChangeId({
-    required ActorId id,
-    required String name,
-  }) {
+  String? latestStoredChangeId({required EntityId id, required String name}) {
     final logId = '$id/$name';
 
     logger.fine('Getting latest version of $logId');
@@ -113,12 +100,12 @@ class ClientMessageStore {
 
   // startAt is a view state version which
   // we want to start getting events at
-  Stream<ChangeEnvelop2> changes({
-    required ActorId id,
+  Stream<ChangeEnvelop> changes({
+    required EntityId id,
     required String name,
     String startAt = '',
   }) {
-    Stream<ChangeEnvelop2> past;
+    Stream<ChangeEnvelop> past;
     // TODO: do we need this?
     if (startAt != '-1') {
       past = Stream.fromIterable(
@@ -129,23 +116,16 @@ class ClientMessageStore {
       past = Stream.empty();
     }
 
-    var future = _changes.stream.where(
-      (e) => e.key == id && e.name == name,
-    );
+    var future = _changes.stream.where((e) => e.key == id && e.name == name);
 
-    return Rx.concatEager([
-      past,
-      future,
-    ]);
+    return Rx.concatEager([past, future]);
   }
 
-  Stream<ChangeEnvelop2> futureChanges({
-    required ActorId id,
+  Stream<ChangeEnvelop> futureChanges({
+    required EntityId id,
     required String name,
   }) {
-    return _changes.stream.where(
-      (e) => e.key == id && e.name == name,
-    );
+    return _changes.stream.where((e) => e.key == id && e.name == name);
   }
 
   /// Removes stored changes up to a certain version passed.
@@ -173,7 +153,7 @@ class ClientMessageStore {
     );
   }
 
-  ChangeEnvelop2 firstChange(ActorId actorId, String viewName) {
+  ChangeEnvelop firstChange(EntityId actorId, String viewName) {
     throw UnimplementedError('client message store does not support this');
   }
 
@@ -182,7 +162,7 @@ class ClientMessageStore {
     _changeStore.clear();
   }
 
-  void _saveChange(ChangeEnvelop2 e) {
+  void _saveChange(ChangeEnvelop e) {
     if (e.changes.isEmpty) {
       return;
     }
@@ -217,7 +197,7 @@ class ClientMessageStore {
   }
 
   // maps actor id to change lod
-  final _changeStore = <ActorId, List<ChangeEnvelop2>>{};
+  final _changeStore = <EntityId, List<ChangeEnvelop>>{};
 
-  final _changes = StreamController<ChangeEnvelop2>.broadcast();
+  final _changes = StreamController<ChangeEnvelop>.broadcast();
 }

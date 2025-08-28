@@ -1,3 +1,7 @@
+## 0.18.0
+
+ - **BREAKING CHANGE**: rename public API.
+
 ## 0.17.18
 
  - **FEAT**: service type.

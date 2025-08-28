@@ -24,17 +24,12 @@ final class ConnectionStateReconnecting implements FluirConnectionState {}
 final class ConnectionStateReconnected implements FluirConnectionState {}
 
 sealed class ConnectionConfig {
-  ConnectionConfig({
-    required this.url,
-    required this.apiKey,
-  });
+  ConnectionConfig({required this.url, required this.apiKey});
 
   final String url;
   final String apiKey;
 
-  Map<String, dynamic> get httpHeaders => {
-        'apiKey': apiKey,
-      };
+  Map<String, dynamic> get httpHeaders => {'apiKey': apiKey};
 }
 
 class IncognitoConfig extends ConnectionConfig {
@@ -46,9 +41,9 @@ class LoggedInConfig extends ConnectionConfig {
 
   @override
   Map<String, dynamic> get httpHeaders => {
-        ...super.httpHeaders,
-        'isNewUser': false,
-      };
+    ...super.httpHeaders,
+    'isNewUser': false,
+  };
 }
 
 abstract class Connection implements ValueNotifier<FluirConnectionState> {
@@ -60,34 +55,34 @@ abstract class Connection implements ValueNotifier<FluirConnectionState> {
 
   void reopen(ConnectionConfig config);
 
-  Future<QueryResult2> query({
+  Future<QueryResult> query({
     required String actorId,
     required String name,
     required QueryDef def,
   });
 
-  Future<void> send(String actorName, ActorId to, RemoteCommand cmd);
+  Future<void> send(String actorName, EntityId to, RemoteCommand cmd);
 
   Future<RemoteEvent> call(
     String actorName,
-    ActorId to,
+    EntityId to,
     RemoteCommand cmd,
     Duration timeout,
   );
 
-  Future<FlowResult2> dispatchEvent(RemoteEvent event, Duration timeout);
+  Future<FlowResult> dispatchEvent(RemoteEvent event, Duration timeout);
 
-  Future<void> subscribeViews(Iterable<ActorViewSub2> subs);
+  Future<void> subscribeViews(Iterable<ActorViewSub> subs);
 
-  Future<void> unsubscribeViews(Iterable<ActorViewSub2> subs);
+  Future<void> unsubscribeViews(Iterable<ActorViewSub> subs);
 }
 
 final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
     implements Connection {
   WebSocketConnection(this.system, ConnectionConfig config)
-      : logger = Logger('Fluir.Connection'),
-        _config = config,
-        super(ConnectionStateDisconnected());
+    : logger = Logger('Fluir.Connection'),
+      _config = config,
+      super(ConnectionStateDisconnected());
 
   @override
   ConnectionConfig get config => _config;
@@ -161,20 +156,17 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<QueryResult2> query({
+  Future<QueryResult> query({
     required String actorId,
     required String name,
     required QueryDef def,
   }) async {
-    var msg = QueryWsMsg2(
-      actorId: actorId,
-      def: def,
-    );
+    var msg = QueryWsMsg(actorId: actorId, def: def);
 
     var boxId = _send(msg);
     var res = await _boxStream(boxId).map((box) => box.msg).first;
 
-    if (res is! QueryResultWsMsg2) {
+    if (res is! QueryResultWsMsg) {
       logger.severe('query failed with $res');
       throw FluirError(res.toString());
     }
@@ -183,15 +175,15 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<void> send(String actorName, ActorId to, RemoteCommand cmd) async {
+  Future<void> send(String actorName, EntityId to, RemoteCommand cmd) async {
     logger.fine('sending $cmd... to $to');
 
-    var msg = SendCommandWsMsg2(actorName, to, cmd);
+    var msg = SendCommandWsMsg(actorName, to, cmd);
 
     var boxId = _send(msg);
     var res = await _boxStream(boxId).map((box) => box.msg).first;
 
-    if (res is! SendCommandAckWsMsg2) {
+    if (res is! SendCommandAckWsMsg) {
       logger.severe('send $cmd to $to failed with $res');
       throw FluirError(res.toString());
     }
@@ -202,23 +194,20 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   @override
   Future<RemoteEvent> call(
     String actorName,
-    ActorId to,
+    EntityId to,
     RemoteCommand cmd,
     Duration timeout,
   ) async {
     logger.fine('calling $cmd...');
 
-    final msg = CallCommandWsMsg2(actorName, to, cmd);
+    final msg = CallCommandWsMsg(actorName, to, cmd);
 
     final boxId = _send(msg);
-    final res = await _boxStream(boxId)
-        .map(
-          (box) => box.msg,
-        )
-        .timeout(timeout)
-        .first;
+    final res = await _boxStream(
+      boxId,
+    ).map((box) => box.msg).timeout(timeout).first;
 
-    if (res is! CallCommandResWsMsg2) {
+    if (res is! CallCommandResWsMsg) {
       logger.severe('call failed with $res');
       throw FluirError(res.toString());
     }
@@ -235,23 +224,17 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<FlowResult2> dispatchEvent(
-    RemoteEvent event,
-    Duration timeout,
-  ) async {
+  Future<FlowResult> dispatchEvent(RemoteEvent event, Duration timeout) async {
     logger.fine('dispatching $event...');
 
-    final msg = DispatchEventWsMsg2(event);
+    final msg = DispatchEventWsMsg(event);
 
     final boxId = _send(msg);
-    final res = await _boxStream(boxId)
-        .map(
-          (box) => box.msg,
-        )
-        .timeout(timeout)
-        .first;
+    final res = await _boxStream(
+      boxId,
+    ).map((box) => box.msg).timeout(timeout).first;
 
-    if (res is! DispatchEventResWsMsg2) {
+    if (res is! DispatchEventResWsMsg) {
       logger.severe('dispatch failed with $res');
       throw FluirError(res.toString());
     }
@@ -261,15 +244,15 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<void> subscribeViews(Iterable<ActorViewSub2> subs) async {
+  Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
     logger.fine('subscribing to ${subs.toList()} views...');
 
-    final msg = SubscribeViewsWsMsg2(subs.toList());
+    final msg = SubscribeViewsWsMsg(subs.toList());
 
     final boxId = _send(msg);
     final res = await _boxStream(boxId).map((box) => box.msg).first;
 
-    if (res is! SubscribeViewsAckWsMsg2) {
+    if (res is! SubscribeViewsAckWsMsg) {
       logger.severe('subscribe views resulted in $res');
       throw FluirError(res.toString());
     }
@@ -278,15 +261,15 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   }
 
   @override
-  Future<void> unsubscribeViews(Iterable<ActorViewSub2> subs) async {
+  Future<void> unsubscribeViews(Iterable<ActorViewSub> subs) async {
     logger.fine('unsubscribing from ${subs.toList()} views...');
 
-    var msg = UnsubscribeViewsWsMsg2(subs.toList());
+    var msg = UnsubscribeViewsWsMsg(subs.toList());
 
     var boxId = _send(msg);
     var res = await _boxStream(boxId).map((box) => box.msg).first;
 
-    if (res is! UnsubscribeViewsResWsMsg2) {
+    if (res is! UnsubscribeViewsResWsMsg) {
       logger.severe('unsubscribe views resulted in $res');
       throw FluirError(res.toString());
     }
@@ -294,7 +277,7 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
     logger.info('unsubscribed from ${subs.toList()} views');
   }
 
-  Stream<WsMessageBox2> _boxStream(int msgId) {
+  Stream<WsMessageBox> _boxStream(int msgId) {
     return _streamGroup.stream.where((box) => box.id == msgId);
   }
 
@@ -322,13 +305,11 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
           .doOnError(_onStreamError)
           .doOnDone(_onStreamDone)
           .doOnCancel(() => logger.warning('connection got canceled'))
-          .map((data) => WsMessageBox2.decodeJson(data, logger));
+          .map((data) => WsMessageBox.decodeJson(data, logger));
 
       _streamGroup.add(_channelStream!);
 
-      _sub = _streamGroup.stream.listen(
-        _onStreamData,
-      );
+      _sub = _streamGroup.stream.listen(_onStreamData);
 
       logger.info('connected');
 
@@ -344,11 +325,11 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
     }
   }
 
-  int _send(WsMessage2 msg) {
+  int _send(WsMessage msg) {
     logger.finer('sending msg $msg...');
 
     _msgId += 1;
-    var box = WsMessageBox2(id: _msgId, msg: msg);
+    var box = WsMessageBox(id: _msgId, msg: msg);
 
     if (!_isConnected) {
       _queue.addLast(box);
@@ -379,7 +360,7 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
     logger.fine('queue drained');
   }
 
-  void _sendBox(WsMessageBox2 box) {
+  void _sendBox(WsMessageBox box) {
     logger.finer('sending box $box..');
 
     var data = box.encodeJson(logger);
@@ -415,15 +396,15 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
     logger.info('channel closed');
   }
 
-  void _onStreamData(WsMessageBox2 box) {
+  void _onStreamData(WsMessageBox box) {
     logger.info('received $box');
 
     final msg = box.msg;
 
-    if (msg is WelcomeWsMsg2) {
+    if (msg is WelcomeWsMsg) {
       system.changeAuthState(msg.userId);
     }
-    if (msg is ViewChangeWsMsg2) {
+    if (msg is ViewChangeWsMsg) {
       system.publishChange(msg.env);
     }
   }
@@ -449,11 +430,11 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
 
   ConnectionConfig _config;
   IOWebSocketChannel? _channel;
-  Stream<WsMessageBox2>? _channelStream;
+  Stream<WsMessageBox>? _channelStream;
   StreamSubscription? _sub;
   int _msgId = 0;
   bool _isConnected = false;
   bool _isFirstTimeConnect = true;
-  final _streamGroup = StreamGroup<WsMessageBox2>.broadcast();
-  final _queue = Queue<WsMessageBox2>();
+  final _streamGroup = StreamGroup<WsMessageBox>.broadcast();
+  final _queue = Queue<WsMessageBox>();
 }

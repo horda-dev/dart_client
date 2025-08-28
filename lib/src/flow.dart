@@ -10,10 +10,8 @@ import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
 
-typedef FluirFlowLocalHandler<E extends LocalEvent> = Future<void> Function(
-  E event,
-  FluirFlowContext context,
-);
+typedef FluirFlowLocalHandler<E extends LocalEvent> =
+    Future<void> Function(E event, FluirFlowContext context);
 
 abstract class FluirFlowContext {
   Logger get logger;
@@ -38,7 +36,7 @@ abstract class FluirFlowContext {
 
   /// Sends a [RemoteEvent] to the server and returns a [FlowResult2]
   /// after the event is handled by [Flow].
-  Future<FlowResult2> dispatchEvent(RemoteEvent event);
+  Future<FlowResult> dispatchEvent(RemoteEvent event);
 }
 
 abstract class FluirFlow extends ProxyWidget implements FluirFlowHandlers {
@@ -88,7 +86,7 @@ class FluirFlowElement extends ProxyElement
     with NotifiableElementMixin
     implements FluirFlowContext {
   FluirFlowElement(super.widget)
-      : logger = Logger('Fluir.Flow.${widget.runtimeType}');
+    : logger = Logger('Fluir.Flow.${widget.runtimeType}');
 
   FluirFlow get widget => super.widget as FluirFlow;
 
@@ -183,7 +181,7 @@ class FluirFlowElement extends ProxyElement
   }
 
   @override
-  Future<FlowResult2> dispatchEvent(RemoteEvent event) async {
+  Future<FlowResult> dispatchEvent(RemoteEvent event) async {
     try {
       logger.info('dispatching $event...');
 
@@ -197,7 +195,7 @@ class FluirFlowElement extends ProxyElement
 
       logger.warning(msg);
 
-      return FlowResult2.error(msg);
+      return FlowResult.error(msg);
     }
   }
 
