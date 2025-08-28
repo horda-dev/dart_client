@@ -4,7 +4,7 @@ version: 0.17.18
 homepage: https://github.com/horda-ai/dart_client
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
   flutter: ">=3.10.0"
 
 dependencies:
@@ -24,7 +24,3 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   json_serializable: ^6.11.0
-
-dependency_overrides:
-  horda_core:
-    path: ../dart_core
