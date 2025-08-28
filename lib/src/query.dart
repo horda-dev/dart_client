@@ -95,16 +95,13 @@ class ActorValueView<T> extends ActorView {
     super.subscribe,
     ValueViewConvertFunc<T>? convert,
   }) : super(
-          convert: convert ?? (val) => _defaultValueConvert<T>(name, val),
-          nullable: null is T,
-        );
+         convert: convert ?? (val) => _defaultValueConvert<T>(name, val),
+         nullable: null is T,
+       );
 
   @override
   ViewQueryDefBuilder queryBuilder() {
-    return ValueQueryDefBuilder(
-      name,
-      subscribe: subscribe,
-    );
+    return ValueQueryDefBuilder(name, subscribe: subscribe);
   }
 
   @override
@@ -113,20 +110,13 @@ class ActorValueView<T> extends ActorView {
     ActorQueryHost parent,
     FluirClientSystem system,
   ) {
-    return ActorValueViewHost<T>(
-      parentLoggerName,
-      parent,
-      this,
-      system,
-    );
+    return ActorValueViewHost<T>(parentLoggerName, parent, this, system);
   }
 }
 
 T _defaultValueConvert<T>(String viewName, dynamic val) {
   if (val is! T) {
-    throw FluirError(
-      'view $viewName value type is invalid $val',
-    );
+    throw FluirError('view $viewName value type is invalid $val');
   }
   return val;
 }
@@ -160,25 +150,15 @@ DateTime? dateTimeConvert(
     throw FluirError('DateTime view "$viewName" value is not int "$val"');
   }
 
-  return DateTime.fromMillisecondsSinceEpoch(
-    val,
-    isUtc: isUtc,
-  );
+  return DateTime.fromMillisecondsSinceEpoch(val, isUtc: isUtc);
 }
 
 class ActorCounterView<T> extends ActorView {
-  ActorCounterView(
-    super.name, {
-    super.subscribe,
-    super.nullable,
-  });
+  ActorCounterView(super.name, {super.subscribe, super.nullable});
 
   @override
   ViewQueryDefBuilder queryBuilder() {
-    return ValueQueryDefBuilder(
-      name,
-      subscribe: subscribe,
-    );
+    return ValueQueryDefBuilder(name, subscribe: subscribe);
   }
 
   @override
@@ -187,12 +167,7 @@ class ActorCounterView<T> extends ActorView {
     ActorQueryHost parent,
     FluirClientSystem system,
   ) {
-    return ActorCounterViewHost(
-      parentLoggerName,
-      parent,
-      this,
-      system,
-    );
+    return ActorCounterViewHost(parentLoggerName, parent, this, system);
   }
 }
 
@@ -226,12 +201,7 @@ class ActorRefView<S extends ActorQuery> extends ActorView {
     ActorQueryHost parent,
     FluirClientSystem system,
   ) {
-    return ActorRefViewHost(
-      parentLoggerName,
-      parent,
-      this,
-      system,
-    );
+    return ActorRefViewHost(parentLoggerName, parent, this, system);
   }
 }
 
@@ -265,12 +235,7 @@ class ActorListView<S extends ActorQuery> extends ActorView {
     ActorQueryHost parent,
     FluirClientSystem system,
   ) {
-    return ActorListViewHost(
-      parentLoggerName,
-      parent,
-      this,
-      system,
-    );
+    return ActorListViewHost(parentLoggerName, parent, this, system);
   }
 }
 
@@ -285,9 +250,7 @@ class ActorQueryHost {
 
     // Devtool: tracking ActorQueryHosts creation
     DevtoolEventLog.sendToDevtool(
-      DevtoolFluirHostCreated(
-        path: '${logger.fullName}',
-      ),
+      DevtoolFluirHostCreated(path: '${logger.fullName}'),
     );
 
     for (var entry in query.views.entries) {
@@ -480,9 +443,7 @@ class ActorQueryHost {
 
     // Devtool: tracking ActorViewHosts stopping
     DevtoolEventLog.sendToDevtool(
-      DevtoolFluirHostStopped(
-        path: '${logger.fullName}',
-      ),
+      DevtoolFluirHostStopped(path: '${logger.fullName}'),
     );
 
     logger.info('$oldActorId: stopped');
@@ -522,29 +483,18 @@ class ActorQueryHost {
   bool _isStopped = false;
 }
 
-enum ActorQueryState {
-  created,
-  loaded,
-  error,
-  stopped,
-}
+enum ActorQueryState { created, loaded, error, stopped }
 
 abstract class ActorQueryGroup {
   void add(ActorView view);
 }
 
 abstract class ActorViewHost {
-  ActorViewHost(
-    this.parentLoggerName,
-    this.parent,
-    this.view,
-    this.system,
-  ) : logger = Logger('$parentLoggerName.${view.name}') {
+  ActorViewHost(this.parentLoggerName, this.parent, this.view, this.system)
+    : logger = Logger('$parentLoggerName.${view.name}') {
     // Devtool: tracking ActorViewHosts creation
     DevtoolEventLog.sendToDevtool(
-      DevtoolFluirHostCreated(
-        path: '${logger.fullName}',
-      ),
+      DevtoolFluirHostCreated(path: '${logger.fullName}'),
     );
   }
 
@@ -599,11 +549,8 @@ abstract class ActorViewHost {
     logger.info('$actorId: set initial version $_changeId');
 
     // The latest stored version at the moment of subscription to stream of changes
-    final latestStoredChangeId = system.latestStoredChangeIdOf(
-          id: actorId,
-          name: view.name,
-        ) ??
-        changeId;
+    final latestStoredChangeId =
+        system.latestStoredChangeIdOf(id: actorId, name: view.name) ?? changeId;
 
     // If we were subbed to a view, then unsubbed and after a while
     // subbed again, message store won't be able to save changes due to
@@ -619,14 +566,8 @@ abstract class ActorViewHost {
     }
 
     _sub = system
-        .changes(
-          id: actorId,
-          name: view.name,
-          startAt: changeId,
-        )
-        .listen(
-          (event) => _project(event, latestStoredChangeId),
-        );
+        .changes(id: actorId, name: view.name, startAt: changeId)
+        .listen((event) => _project(event, latestStoredChangeId));
 
     logger.info('$actorId: attached');
   }
@@ -690,9 +631,7 @@ abstract class ActorViewHost {
 
     // Devtool: tracking ActorViewHosts stopping
     DevtoolEventLog.sendToDevtool(
-      DevtoolFluirHostStopped(
-        path: '${logger.fullName}',
-      ),
+      DevtoolFluirHostStopped(path: '${logger.fullName}'),
     );
     logger.info('$oldActorId: stopped');
   }
@@ -785,7 +724,8 @@ abstract class ActorViewHost {
         await _projectAll(env);
       }
 
-      final isRemoteChange = ChangeId.fromString(env.changeId) >
+      final isRemoteChange =
+          ChangeId.fromString(env.changeId) >
           ChangeId.fromString(latestStoredChangeId);
 
       // Report view as ready only when projecting changes received from the server.
@@ -799,9 +739,7 @@ abstract class ActorViewHost {
         _runChangeHandlers(change);
       }
 
-      _watcher?.call(
-        ActorQueryPath.root(view.name),
-      );
+      _watcher?.call(ActorQueryPath.root(view.name));
 
       logger.info('$actorId: projected $env');
     }
@@ -814,12 +752,7 @@ abstract class ActorViewHost {
     // Project last change included in ChangeEnvelop2
     final lastChange = env.changes.last;
 
-    final nextValue = await project(
-      env.key,
-      env.name,
-      lastChange,
-      _value,
-    );
+    final nextValue = await project(env.key, env.name, lastChange, _value);
 
     // If host was detached while projecting, don't assign new value and clean up subs,
     // attr hosts and children hosts which were created by the cancelled projection.
@@ -854,12 +787,7 @@ abstract class ActorViewHost {
   Future<void> _projectAll(ChangeEnvelop env) async {
     // Project every change included in ChangeEnvelop2
     for (final change in env.changes) {
-      final nextValue = await project(
-        env.key,
-        env.name,
-        change,
-        _value,
-      );
+      final nextValue = await project(env.key, env.name, change, _value);
 
       // If host was detached while projecting, don't assign new value and clean up subs,
       // attr hosts and children hosts which were created by the cancelled projection.
@@ -891,8 +819,9 @@ abstract class ActorViewHost {
 
   void _runChangeHandlers(Change change) {
     // Strip generic type from ValueViewChanged.
-    final changeType =
-        change is ValueViewChanged ? ValueViewChanged : change.runtimeType;
+    final changeType = change is ValueViewChanged
+        ? ValueViewChanged
+        : change.runtimeType;
 
     final handlers = _changeHandlersByType[changeType];
 
@@ -952,14 +881,10 @@ class ActorValueViewHost<T> extends ActorViewHost {
     }
 
     if (view.subscribe) {
-      final latestChangeId = system.latestStoredChangeIdOf(
-            id: actorId!,
-            name: view.name,
-          ) ??
+      final latestChangeId =
+          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
           changeId;
-      return [
-        ActorViewSub(actorId!, view.name, latestChangeId),
-      ];
+      return [ActorViewSub(actorId!, view.name, latestChangeId)];
     } else {
       return [];
     }
@@ -1017,14 +942,10 @@ class ActorCounterViewHost extends ActorViewHost {
     }
 
     if (view.subscribe) {
-      final latestChangeId = system.latestStoredChangeIdOf(
-            id: actorId!,
-            name: view.name,
-          ) ??
+      final latestChangeId =
+          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
           changeId;
-      return [
-        ActorViewSub(actorId!, view.name, latestChangeId),
-      ];
+      return [ActorViewSub(actorId!, view.name, latestChangeId)];
     } else {
       return [];
     }
@@ -1099,10 +1020,7 @@ class ActorRefViewHost extends ActorViewHost {
     super.watch(path.first, cb);
 
     if (path.next.isNotEmpty) {
-      child.watch(
-        path.next,
-        (childPath) => cb(childPath.prepend(path.first)),
-      );
+      child.watch(path.next, (childPath) => cb(childPath.prepend(path.first)));
     }
   }
 
@@ -1183,10 +1101,8 @@ class ActorRefViewHost extends ActorViewHost {
     final subs = <ActorViewSub>[];
 
     if (view.subscribe) {
-      final latestChangeId = system.latestStoredChangeIdOf(
-            id: actorId!,
-            name: view.name,
-          ) ??
+      final latestChangeId =
+          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
           changeId;
       subs.add(ActorViewSub(actorId!, view.name, latestChangeId));
     }
@@ -1510,10 +1426,8 @@ class ActorListViewHost extends ActorViewHost {
     final subs = <ActorViewSub>[];
 
     if (view.subscribe) {
-      final latestChangeId = system.latestStoredChangeIdOf(
-            id: actorId!,
-            name: view.name,
-          ) ??
+      final latestChangeId =
+          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
           changeId;
       subs.add(ActorViewSub(actorId!, view.name, latestChangeId));
     }
@@ -1687,8 +1601,8 @@ abstract class InheritedModelNotifier<T> extends InheritedWidget {
 class FluirSystemProviderElement
     extends InheritedModelNotifierElement<FluirModelAspect> {
   FluirSystemProviderElement(FluirSystemProvider widget)
-      : conn = widget.system.conn,
-        super(widget) {
+    : conn = widget.system.conn,
+      super(widget) {
     conn.addListener(_onReconnect);
   }
 
@@ -1719,7 +1633,7 @@ class FluirSystemProviderElement
 
 class InheritedModelNotifierElement<T> extends InheritedElement {
   InheritedModelNotifierElement(InheritedModelNotifier<T> widget)
-      : super(widget) {
+    : super(widget) {
     widget.aspectChanges.addListener(_handleUpdate);
   }
 
@@ -1810,7 +1724,7 @@ class InheritedModelNotifierElement<T> extends InheritedElement {
 class ActorQueryProviderElement
     extends InheritedModelNotifierElement<ActorQueryPath> {
   ActorQueryProviderElement(super.widget, this.query, FluirClientSystem system)
-      : host = query.rootHost('Query', system) {
+    : host = query.rootHost('Query', system) {
     actorId = provider.actorId;
 
     logger = Logger('Query.${query.name}');
@@ -2000,8 +1914,8 @@ class AttributesHost {
     this.viewName,
     this.viewAttrs,
     this.system,
-  )   : _watcher = watcher,
-        logger = Logger('$parentLoggerName.AttributesHost');
+  ) : _watcher = watcher,
+      logger = Logger('$parentLoggerName.AttributesHost');
 
   final String parentLoggerName;
   final String viewName;
@@ -2095,10 +2009,8 @@ class AttributesHost {
     final viewSubs = <ActorViewSub>[];
 
     for (final MapEntry(key: name, value: attr) in _attrs.entries) {
-      final latestChangeId = system.latestStoredChangeIdOf(
-            id: id!,
-            name: viewName,
-          ) ??
+      final latestChangeId =
+          system.latestStoredChangeIdOf(id: id!, name: viewName) ??
           attr['version'] as String;
       viewSubs.add(ActorViewSub(id!, name, latestChangeId));
     }
@@ -2174,7 +2086,8 @@ class AttributesHost {
     // Host must listen to only those changes which are addressed to his actor
     if (env.key != id || env.name != name) {
       logger.severe(
-          '$debugId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}');
+        '$debugId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}',
+      );
       return;
     }
 
@@ -2196,9 +2109,7 @@ class AttributesHost {
 
       _attrs[name] = attr;
 
-      _watcher?.call(
-        ActorQueryPath.root(viewName),
-      );
+      _watcher?.call(ActorQueryPath.root(viewName));
 
       logger.info('$debugId: projected $env');
       return;
@@ -2222,9 +2133,7 @@ class AttributesHost {
       _projectAll(name, attr, env);
     }
 
-    _watcher?.call(
-      ActorQueryPath.root(viewName),
-    );
+    _watcher?.call(ActorQueryPath.root(viewName));
 
     logger.info('$debugId: projected $env');
   }
@@ -2261,22 +2170,16 @@ class AttributesHost {
     for (final change in env.changes) {
       if (attr.isEmpty) {
         attr['value'] = _getProjectedValue(attr, change);
-        logger.info(
-          '$debugId: created $name with value -> ${attr['value']}',
-        );
+        logger.info('$debugId: created $name with value -> ${attr['value']}');
         continue;
       }
 
       attr['value'] = _getProjectedValue(attr, change);
-      logger.info(
-        '$debugId: new value -> ${attr['value']}',
-      );
+      logger.info('$debugId: new value -> ${attr['value']}');
     }
 
     attr['version'] = env.changeId;
-    logger.info(
-      '$debugId: new ver -> ${attr['version']}',
-    );
+    logger.info('$debugId: new ver -> ${attr['version']}');
   }
 
   dynamic _getProjectedValue(Map<String, dynamic> attr, Change change) {
@@ -2286,7 +2189,8 @@ class AttributesHost {
       CounterAttrDecremented() => _onCounterAttrDecremented(attr, change),
       CounterAttrReset() => _onCounterAttrReset(attr, change),
       _ => throw FluirError(
-          'Unsupported attribute change type - ${change.runtimeType}.'),
+        'Unsupported attribute change type - ${change.runtimeType}.',
+      ),
     };
   }
 

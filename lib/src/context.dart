@@ -46,31 +46,20 @@ extension MessageExtensions on BuildContext {
   }
 }
 
-typedef ListSelector<Q extends ActorQuery> = ActorListView Function(
-  Q q,
-);
+typedef ListSelector<Q extends ActorQuery> = ActorListView Function(Q q);
 
-typedef RefSelector<P extends ActorQuery, C extends ActorQuery>
-    = ActorRefView<C> Function(
-  P q,
-);
+typedef RefSelector<P extends ActorQuery, C extends ActorQuery> =
+    ActorRefView<C> Function(P q);
 
-typedef RefIdSelector<Q extends ActorQuery> = ActorRefView Function(
-  Q q,
-);
+typedef RefIdSelector<Q extends ActorQuery> = ActorRefView Function(Q q);
 
-typedef ValueSelector<Q extends ActorQuery, T> = ActorValueView<T> Function(
-  Q q,
-);
+typedef ValueSelector<Q extends ActorQuery, T> =
+    ActorValueView<T> Function(Q q);
 
-typedef CounterSelector<Q extends ActorQuery> = ActorCounterView Function(
-  Q q,
-);
+typedef CounterSelector<Q extends ActorQuery> = ActorCounterView Function(Q q);
 
-typedef ListItemSelector<L extends ActorQuery, I extends ActorQuery>
-    = ActorListView<I> Function(
-  L q,
-);
+typedef ListItemSelector<L extends ActorQuery, I extends ActorQuery> =
+    ActorListView<I> Function(L q);
 
 extension ActorViewQueryExtensions on BuildContext {
   ActorQueryProvider runActorQuery({
@@ -97,30 +86,26 @@ extension ActorViewQueryExtensions on BuildContext {
       actorId: actorId,
       query: query,
       system: FluirSystemProvider.of(this),
-      child: Builder(builder: (context) {
-        var query = context.query<ActorQuery>();
-        switch (query.state()) {
-          case ActorQueryState.created:
-            return loading ??
-                Container(
-                  alignment: Alignment.center,
-                  child: CupertinoActivityIndicator(),
-                );
-          case ActorQueryState.error:
-            return error ??
-                Container(
-                  alignment: Alignment.center,
-                  child: Text(':('),
-                );
-          case ActorQueryState.loaded:
-            return child;
-          case ActorQueryState.stopped:
-            return Container(
-              alignment: Alignment.center,
-              child: Text('?'),
-            );
-        }
-      }),
+      child: Builder(
+        builder: (context) {
+          var query = context.query<ActorQuery>();
+          switch (query.state()) {
+            case ActorQueryState.created:
+              return loading ??
+                  Container(
+                    alignment: Alignment.center,
+                    child: CupertinoActivityIndicator(),
+                  );
+            case ActorQueryState.error:
+              return error ??
+                  Container(alignment: Alignment.center, child: Text(':('));
+            case ActorQueryState.loaded:
+              return child;
+            case ActorQueryState.stopped:
+              return Container(alignment: Alignment.center, child: Text('?'));
+          }
+        },
+      ),
     );
   }
 
@@ -158,17 +143,13 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
   ActorQueryDependencyBuilder<C> ref<C extends ActorQuery>(
     RefSelector<Q, C> sel,
   ) {
-    return ActorQueryDependencyBuilder._(
-      _builder.ref(sel, maybe: false),
-    );
+    return ActorQueryDependencyBuilder._(_builder.ref(sel, maybe: false));
   }
 
   MaybeActorQueryDependencyBuilder<C> maybeRef<C extends ActorQuery>(
     RefSelector<Q, C> sel,
   ) {
-    return MaybeActorQueryDependencyBuilder._(
-      _builder.ref(sel, maybe: true),
-    );
+    return MaybeActorQueryDependencyBuilder._(_builder.ref(sel, maybe: true));
   }
 
   // leaf
@@ -246,9 +227,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return ActorQueryValueHandlerBuilder<Q, T>(_builder, sel);
   }
 
-  ActorQueryRefHandlerBuilder addRefHandler(
-    RefIdSelector<Q> sel,
-  ) {
+  ActorQueryRefHandlerBuilder addRefHandler(RefIdSelector<Q> sel) {
     final context = _builder.context;
 
     if (context is! StatefulElement || context.state is! ChangeHandlerState) {
@@ -260,9 +239,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return ActorQueryRefHandlerBuilder<Q>(_builder, sel);
   }
 
-  ActorQueryCounterHandlerBuilder addCounterHandler(
-    CounterSelector<Q> sel,
-  ) {
+  ActorQueryCounterHandlerBuilder addCounterHandler(CounterSelector<Q> sel) {
     final context = _builder.context;
 
     if (context is! StatefulElement || context.state is! ChangeHandlerState) {
@@ -274,9 +251,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return ActorQueryCounterHandlerBuilder<Q>(_builder, sel);
   }
 
-  ActorQueryListHandlerBuilder addListHandler(
-    ListSelector<Q> sel,
-  ) {
+  ActorQueryListHandlerBuilder addListHandler(ListSelector<Q> sel) {
     final context = _builder.context;
 
     if (context is! StatefulElement || context.state is! ChangeHandlerState) {
@@ -375,9 +350,7 @@ class MaybeActorQueryDependencyBuilder<Q extends ActorQuery> {
   MaybeActorQueryDependencyBuilder<C> ref<C extends ActorQuery>(
     RefSelector<Q, C> sel,
   ) {
-    return MaybeActorQueryDependencyBuilder._(
-      _builder.ref(sel, maybe: true),
-    );
+    return MaybeActorQueryDependencyBuilder._(_builder.ref(sel, maybe: true));
   }
 
   // leaf
@@ -418,8 +391,8 @@ class _Builder<Q extends ActorQuery> {
     this.element,
     this.context, {
     required this.depend,
-  })  : path = ActorQueryPath.empty(),
-        maybe = false;
+  }) : path = ActorQueryPath.empty(),
+       maybe = false;
 
   _Builder.child(
     this.queryType,
@@ -456,9 +429,7 @@ class _Builder<Q extends ActorQuery> {
     var list = host.children[view.name] as ActorListViewHost;
 
     if (index >= list.items.length) {
-      throw FluirError(
-        'index $index is out of bounds for ${list.debugId}',
-      );
+      throw FluirError('index $index is out of bounds for ${list.debugId}');
     }
 
     var itemId = list.items.elementAt(index);
@@ -616,9 +587,7 @@ class _Builder<Q extends ActorQuery> {
     }
 
     if (child.refId == null && !maybe) {
-      throw FluirError(
-        'ref value for ${view.name} in ${host.debugId} is null',
-      );
+      throw FluirError('ref value for ${view.name} in ${host.debugId} is null');
     }
 
     return child.refId!;
@@ -672,9 +641,7 @@ class _Builder<Q extends ActorQuery> {
     }
 
     if (index >= child.items.length) {
-      throw FluirError(
-        'index $index is out of bounds for ${child.debugId}',
-      );
+      throw FluirError('index $index is out of bounds for ${child.debugId}');
     }
 
     return child.items.elementAt(index);
@@ -788,11 +755,7 @@ class _Builder<Q extends ActorQuery> {
     return child.valueAttr<T>(attrName);
   }
 
-  T listItemValAttr<T>(
-    ListSelector<Q> sel,
-    String attrName,
-    int index,
-  ) {
+  T listItemValAttr<T>(ListSelector<Q> sel, String attrName, int index) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -817,11 +780,7 @@ class _Builder<Q extends ActorQuery> {
     return child.valueAttr<T>(attrName, index);
   }
 
-  int listItemCounterAtt(
-    ListSelector<Q> sel,
-    String attrName,
-    int index,
-  ) {
+  int listItemCounterAtt(ListSelector<Q> sel, String attrName, int index) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -864,14 +823,11 @@ class _Builder<Q extends ActorQuery> {
     state.addHost(child);
 
     // Strip generic type from ValueViewChanged
-    final changeType =
-        C.toString().startsWith('ValueViewChanged') ? ValueViewChanged : C;
+    final changeType = C.toString().startsWith('ValueViewChanged')
+        ? ValueViewChanged
+        : C;
 
-    child.addChangeHandler(
-      changeType,
-      handler,
-      state,
-    );
+    child.addChangeHandler(changeType, handler, state);
   }
 }
 

@@ -18,13 +18,12 @@ class TestQuery extends ActorQuery {
 }
 
 class RefQuery extends ActorQuery {
-  final refview = ActorRefView('name',
-      query: TestQuery(),
-      attrs: [
-        'attr1',
-        'attr2',
-      ],
-      subscribe: false);
+  final refview = ActorRefView(
+    'name',
+    query: TestQuery(),
+    attrs: ['attr1', 'attr2'],
+    subscribe: false,
+  );
 
   @override
   void initViews(ActorQueryGroup views) {
@@ -35,10 +34,7 @@ class RefQuery extends ActorQuery {
 void main() {
   test('query should handle subscribe flag', () async {
     final system = FluirClientSystem(
-      LoggedInConfig(
-        url: 'ws://0.0.0.0:8080/ws',
-        apiKey: 'apikey',
-      ),
+      LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
       TestAuthProvider(),
     );
 
@@ -59,10 +55,7 @@ void main() {
 
   test('refquery should handle subscribe flag within subqueries', () async {
     final system = FluirClientSystem(
-      LoggedInConfig(
-        url: 'ws://0.0.0.0:8080/ws',
-        apiKey: 'apikey',
-      ),
+      LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
       TestAuthProvider(),
     );
 
@@ -70,18 +63,20 @@ void main() {
 
     var rb = QueryResultBuilder()
       ..ref(
-          'name',
-          'actor2',
-          {
-            'attr1': {'val': 'a1', 'chid': '1:0:0:0'},
-            'attr2': {'val': 20, 'chid': '1:0:0:0'}
-          },
-          '101:0:0:0', (rb) {
-        rb
-          ..val('name', 'user1', '1:0:0:0')
-          ..val('threadCount', 10, '2:0:0:0')
-          ..val('speechCount', 100, '3:0:0:0');
-      });
+        'name',
+        'actor2',
+        {
+          'attr1': {'val': 'a1', 'chid': '1:0:0:0'},
+          'attr2': {'val': 20, 'chid': '1:0:0:0'},
+        },
+        '101:0:0:0',
+        (rb) {
+          rb
+            ..val('name', 'user1', '1:0:0:0')
+            ..val('threadCount', 10, '2:0:0:0')
+            ..val('speechCount', 100, '3:0:0:0');
+        },
+      );
 
     var res = rb.build();
 

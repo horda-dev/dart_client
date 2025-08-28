@@ -2,23 +2,21 @@ import 'package:horda_client/horda_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class TestQuery extends ActorQuery {
-  final view1 = ActorValueView<String>(
-    'view1',
+  final view1 = ActorValueView<String>('view1');
+
+  final view2 = ActorValueView<String>('view2');
+
+  final ref = ActorRefView(
+    'ref1',
+    query: TestRefQuery(),
+    attrs: ['attr1', 'attr2'],
   );
 
-  final view2 = ActorValueView<String>(
-    'view2',
+  final list = ActorListView(
+    'list1',
+    query: TestListQuery(),
+    attrs: ['attr3', 'attr4'],
   );
-
-  final ref = ActorRefView('ref1', query: TestRefQuery(), attrs: [
-    'attr1',
-    'attr2',
-  ]);
-
-  final list = ActorListView('list1', query: TestListQuery(), attrs: [
-    'attr3',
-    'attr4',
-  ]);
 
   @override
   void initViews(ActorQueryGroup views) {
@@ -31,13 +29,9 @@ class TestQuery extends ActorQuery {
 }
 
 class TestRefQuery extends ActorQuery {
-  final view3 = ActorValueView<String>(
-    'view3',
-  );
+  final view3 = ActorValueView<String>('view3');
 
-  final view4 = ActorValueView<String>(
-    'view4',
-  );
+  final view4 = ActorValueView<String>('view4');
 
   @override
   void initViews(ActorQueryGroup group) {
@@ -48,13 +42,9 @@ class TestRefQuery extends ActorQuery {
 }
 
 class TestListQuery extends ActorQuery {
-  final view5 = ActorValueView<String>(
-    'view5',
-  );
+  final view5 = ActorValueView<String>('view5');
 
-  final view6 = ActorValueView<String>(
-    'view6',
-  );
+  final view6 = ActorValueView<String>('view6');
 
   @override
   void initViews(ActorQueryGroup group) {
@@ -82,10 +72,7 @@ void main() {
           ..val('view6');
       });
 
-    expect(
-      q.queryBuilder().build().toJson(),
-      expected.build().toJson(),
-    );
+    expect(q.queryBuilder().build().toJson(), expected.build().toJson());
   });
 
   test('query def builder should produce correct json', () {
@@ -110,7 +97,7 @@ void main() {
         'type': 'ref',
         'query': {
           'view3': {'type': 'val'},
-          'view4': {'type': 'val'}
+          'view4': {'type': 'val'},
         },
         'attrs': ['attr1', 'attr2'],
       },
@@ -118,7 +105,7 @@ void main() {
         'type': 'list',
         'query': {
           'view5': {'type': 'val'},
-          'view6': {'type': 'val'}
+          'view6': {'type': 'val'},
         },
         'attrs': ['attr3', 'attr4'],
       },
@@ -133,7 +120,7 @@ void main() {
         'type': 'ref',
         'query': {
           'view3': {'type': 'val'},
-          'view4': {'type': 'val'}
+          'view4': {'type': 'val'},
         },
         'attrs': ['attr1', 'attr2'],
       },
@@ -141,7 +128,7 @@ void main() {
         'type': 'list',
         'query': {
           'view5': {'type': 'val'},
-          'view6': {'type': 'val'}
+          'view6': {'type': 'val'},
         },
         'attrs': ['attr3', 'attr4'],
       },
@@ -168,7 +155,7 @@ void main() {
         'type': 'list',
         'query': {
           'view5': {'type': 'val'},
-          'view6': {'type': 'val'}
+          'view6': {'type': 'val'},
         },
       },
     };
@@ -259,32 +246,20 @@ void main() {
     var res = qb.build();
 
     expect(res.toJson(), {
-      'view11': {
-        'type': 'val',
-      },
-      'view12': {
-        'type': 'val',
-      },
+      'view11': {'type': 'val'},
+      'view12': {'type': 'val'},
       'ref1': {
         'type': 'ref',
         'query': {
-          'view21': {
-            'type': 'val',
-          },
-          'view22': {
-            'type': 'val',
-          },
+          'view21': {'type': 'val'},
+          'view22': {'type': 'val'},
         },
       },
       'list1': {
         'type': 'list',
         'query': {
-          'view31': {
-            'type': 'val',
-          },
-          'view32': {
-            'type': 'val',
-          },
+          'view31': {'type': 'val'},
+          'view32': {'type': 'val'},
         },
       },
     });

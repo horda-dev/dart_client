@@ -10,10 +10,8 @@ import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
 
-typedef FluirFlowLocalHandler<E extends LocalEvent> = Future<void> Function(
-  E event,
-  FluirFlowContext context,
-);
+typedef FluirFlowLocalHandler<E extends LocalEvent> =
+    Future<void> Function(E event, FluirFlowContext context);
 
 abstract class FluirFlowContext {
   Logger get logger;
@@ -88,7 +86,7 @@ class FluirFlowElement extends ProxyElement
     with NotifiableElementMixin
     implements FluirFlowContext {
   FluirFlowElement(super.widget)
-      : logger = Logger('Fluir.Flow.${widget.runtimeType}');
+    : logger = Logger('Fluir.Flow.${widget.runtimeType}');
 
   FluirFlow get widget => super.widget as FluirFlow;
 

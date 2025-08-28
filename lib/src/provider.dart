@@ -5,17 +5,11 @@ import 'connection.dart';
 import 'query.dart';
 import 'system.dart';
 
-enum FluirModelAspect {
-  authState,
-  connectionState,
-}
+enum FluirModelAspect { authState, connectionState }
 
 class FluirSystemProvider extends InheritedModelNotifier<FluirModelAspect> {
-  FluirSystemProvider({
-    Key? key,
-    required this.system,
-    required Widget child,
-  }) : super(key: key, child: child) {
+  FluirSystemProvider({Key? key, required this.system, required Widget child})
+    : super(key: key, child: child) {
     system.conn.addListener(() {
       aspectChanges.add(FluirModelAspect.connectionState);
     });
@@ -41,8 +35,8 @@ class FluirSystemProvider extends InheritedModelNotifier<FluirModelAspect> {
   }
 
   static FluirClientSystem of(BuildContext context) {
-    final provider =
-        context.findAncestorWidgetOfExactType<FluirSystemProvider>();
+    final provider = context
+        .findAncestorWidgetOfExactType<FluirSystemProvider>();
 
     if (provider == null) {
       throw FluirError('no FluirSystemProvider found');

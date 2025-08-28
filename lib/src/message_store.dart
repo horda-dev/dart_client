@@ -9,7 +9,7 @@ import 'system.dart';
 
 class ClientMessageStore {
   ClientMessageStore(this.system, this.conn)
-      : logger = Logger('Fluir.MessageStore');
+    : logger = Logger('Fluir.MessageStore');
 
   final FluirClientSystem system;
 
@@ -41,9 +41,7 @@ class ClientMessageStore {
     _saveChange(change);
     _changes.add(change);
 
-    logger.info(
-      'published change $change from ${change.sourceId}',
-    );
+    logger.info('published change $change from ${change.sourceId}');
   }
 
   /// Returns an [Iterable] with one [ChangeEnvelop] which contains all past changes.
@@ -85,10 +83,7 @@ class ClientMessageStore {
     return [...range];
   }
 
-  String? latestStoredChangeId({
-    required EntityId id,
-    required String name,
-  }) {
+  String? latestStoredChangeId({required EntityId id, required String name}) {
     final logId = '$id/$name';
 
     logger.fine('Getting latest version of $logId');
@@ -121,23 +116,16 @@ class ClientMessageStore {
       past = Stream.empty();
     }
 
-    var future = _changes.stream.where(
-      (e) => e.key == id && e.name == name,
-    );
+    var future = _changes.stream.where((e) => e.key == id && e.name == name);
 
-    return Rx.concatEager([
-      past,
-      future,
-    ]);
+    return Rx.concatEager([past, future]);
   }
 
   Stream<ChangeEnvelop> futureChanges({
     required EntityId id,
     required String name,
   }) {
-    return _changes.stream.where(
-      (e) => e.key == id && e.name == name,
-    );
+    return _changes.stream.where((e) => e.key == id && e.name == name);
   }
 
   /// Removes stored changes up to a certain version passed.

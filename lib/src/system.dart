@@ -16,10 +16,10 @@ class FluirClientSystem {
     this.analyticsService,
     this.errorTrackingService,
   }) : authState = ValueNotifier<FluirAuthState>(
-          connectionConfig is IncognitoConfig
-              ? AuthStateIncognito()
-              : AuthStateValidating(),
-        ) {
+         connectionConfig is IncognitoConfig
+             ? AuthStateIncognito()
+             : AuthStateValidating(),
+       ) {
     logger = Logger('Fluir.System');
     conn = WebSocketConnection(this, connectionConfig);
     messageStore = ClientMessageStore(this, conn);
@@ -119,17 +119,9 @@ class FluirClientSystem {
   /// after the event is handled by [Flow].
   Future<FlowResult> dispatchEvent(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
-    analyticsService?.reportMessage(
-      event,
-      DispatchLabels(
-        senderId: _senderId,
-      ),
-    );
+    analyticsService?.reportMessage(event, DispatchLabels(senderId: _senderId));
 
-    final res = await conn.dispatchEvent(
-      event,
-      const Duration(seconds: 10),
-    );
+    final res = await conn.dispatchEvent(event, const Duration(seconds: 10));
 
     logger.info('dispatched event $event');
 
@@ -145,11 +137,7 @@ class FluirClientSystem {
     required String name,
     required QueryDef def,
   }) {
-    return conn.query(
-      actorId: actorId,
-      name: name,
-      def: def,
-    );
+    return conn.query(actorId: actorId, name: name, def: def);
   }
 
   Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
@@ -165,9 +153,7 @@ class FluirClientSystem {
     // Therefore manually publish an empty ChangeEnvelop2 to let view report as ready.
     for (final sub in alreadySubbed) {
       logger.info('$sub is already subbed, publishing empty change envelop...');
-      publishChange(
-        ChangeEnvelop.empty(key: sub.id, name: sub.name),
-      );
+      publishChange(ChangeEnvelop.empty(key: sub.id, name: sub.name));
     }
 
     if (readyToSub.isEmpty) {
@@ -213,14 +199,8 @@ class FluirClientSystem {
 
   /// Returns the number of the latest stored version of a view or attribute.
   /// Will return null if view has no locally stored history.
-  String? latestStoredChangeIdOf({
-    required String id,
-    required String name,
-  }) {
-    return messageStore.latestStoredChangeId(
-      id: id,
-      name: name,
-    );
+  String? latestStoredChangeIdOf({required String id, required String name}) {
+    return messageStore.latestStoredChangeId(id: id, name: name);
   }
 
   /// Returns a [Stream] of [ChangeEnvelop]s which includes both change history and future changes.
@@ -231,11 +211,7 @@ class FluirClientSystem {
     required String name,
     String startAt = '',
   }) {
-    return messageStore.changes(
-      id: id,
-      name: name,
-      startAt: startAt,
-    );
+    return messageStore.changes(id: id, name: name, startAt: startAt);
   }
 
   /// Returns an [Iterable] of [ChangeEnvelop]s from view(or attribute)'s change history,
@@ -247,11 +223,7 @@ class FluirClientSystem {
     required String name,
     String startAt = '',
   }) {
-    return messageStore.changeHistory(
-      id: id,
-      name: name,
-      startAt: startAt,
-    );
+    return messageStore.changeHistory(id: id, name: name, startAt: startAt);
   }
 
   /// Returns a [Stream] of [ChangeEnvelop]s which emits future changes which are coming from the server.
@@ -259,10 +231,7 @@ class FluirClientSystem {
     required String id,
     required String name,
   }) {
-    return messageStore.futureChanges(
-      id: id,
-      name: name,
-    );
+    return messageStore.futureChanges(id: id, name: name);
   }
 
   /// Clears local storage of [Change]s and [RemoteEvent]s.
@@ -347,10 +316,7 @@ class FluirClientSystem {
 
 class TestFluirClientSystem extends FluirClientSystem {
   TestFluirClientSystem()
-      : super(
-          IncognitoConfig(url: '', apiKey: ''),
-          TestAuthProvider(),
-        );
+    : super(IncognitoConfig(url: '', apiKey: ''), TestAuthProvider());
 
   void start() {
     // noop

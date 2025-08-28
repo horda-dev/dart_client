@@ -156,9 +156,6 @@ class DevtoolEventLog {
   /// Posts a [DevtoolExtensionLoaded] event with all currently stored [DevtoolFluirEvent]s to the devtool.
   /// The devtool should load/reload after receiving this event.
   void loadDevtool() {
-    dev.postEvent(
-      '${DevtoolExtensionLoaded()}',
-      {'log': toJson()},
-    );
+    dev.postEvent('${DevtoolExtensionLoaded()}', {'log': toJson()});
   }
 }

@@ -14,6 +14,4 @@ Map<String, dynamic> _$SendCallLabelsToJson(SendCallLabels instance) =>
     };
 
 Map<String, dynamic> _$DispatchLabelsToJson(DispatchLabels instance) =>
-    <String, dynamic>{
-      'senderId': instance.senderId,
-    };
+    <String, dynamic>{'senderId': instance.senderId};

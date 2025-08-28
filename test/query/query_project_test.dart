@@ -83,40 +83,22 @@ class TestApp extends StatelessWidget {
   }
 
   Widget _buildLoading(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Text('Build loading'),
-      ),
-    );
+    return MaterialApp(home: Scaffold(body: Text('Build loading')));
   }
 
   Widget _buildError(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Text('Build error'),
-      ),
-    );
+    return MaterialApp(home: Scaffold(body: Text('Build error')));
   }
 
   Widget _buildLoaded(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Text('Build loaded'),
-      ),
-    );
+    return MaterialApp(home: Scaffold(body: Text('Build loaded')));
   }
 }
 
 class TestQuery extends ActorQuery {
-  var list1 = ActorListView(
-    'list1',
-    query: TestListQuery(),
-  );
+  var list1 = ActorListView('list1', query: TestListQuery());
 
-  var ref1 = ActorRefView(
-    'ref1',
-    query: TestRefQuery(),
-  );
+  var ref1 = ActorRefView('ref1', query: TestRefQuery());
 
   @override
   void initViews(ActorQueryGroup views) {
@@ -127,13 +109,9 @@ class TestQuery extends ActorQuery {
 }
 
 class TestListQuery extends ActorQuery {
-  var view1 = ActorValueView<String>(
-    'view1',
-  );
+  var view1 = ActorValueView<String>('view1');
 
-  var view2 = ActorValueView<String>(
-    'view2',
-  );
+  var view2 = ActorValueView<String>('view2');
 
   @override
   void initViews(ActorQueryGroup views) {
@@ -144,13 +122,9 @@ class TestListQuery extends ActorQuery {
 }
 
 class TestRefQuery extends ActorQuery {
-  var view3 = ActorValueView<String>(
-    'view3',
-  );
+  var view3 = ActorValueView<String>('view3');
 
-  var view4 = ActorValueView<String>(
-    'view4',
-  );
+  var view4 = ActorValueView<String>('view4');
 
   @override
   void initViews(ActorQueryGroup views) {

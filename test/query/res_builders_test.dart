@@ -14,17 +14,19 @@ void main() {
       ..val('view11', 'value11', '11')
       ..val('view12', 'value12', '12')
       ..ref(
-          'ref1',
-          'actor2',
-          {
-            'attr1': {'val': 'a1', 'chid': '1'},
-            'attr2': {'val': 20, 'chid': '1'},
-          },
-          '101', (rb) {
-        rb
-          ..val('view21', 'value21', '21')
-          ..val('view22', 'value22', '22');
-      })
+        'ref1',
+        'actor2',
+        {
+          'attr1': {'val': 'a1', 'chid': '1'},
+          'attr2': {'val': 20, 'chid': '1'},
+        },
+        '101',
+        (rb) {
+          rb
+            ..val('view21', 'value21', '21')
+            ..val('view22', 'value22', '22');
+        },
+      )
       ..list('list1', attrs, '201', (rb) {
         rb
           ..item('actor3', (rb) {
@@ -154,17 +156,19 @@ void main() {
       ..val('view11', 'value11', '11')
       ..val('view12', 'value12', '12')
       ..ref(
-          'ref1',
-          'actor2',
-          {
-            'attr1': {'val': 'a1', 'chid': '1'},
-            'attr2': {'val': 20, 'chid': '1'},
-          },
-          '101', (rb) {
-        rb
-          ..val('view21', 'value21', '21')
-          ..val('view22', 'value22', '22');
-      })
+        'ref1',
+        'actor2',
+        {
+          'attr1': {'val': 'a1', 'chid': '1'},
+          'attr2': {'val': 20, 'chid': '1'},
+        },
+        '101',
+        (rb) {
+          rb
+            ..val('view21', 'value21', '21')
+            ..val('view22', 'value22', '22');
+        },
+      )
       ..list('list1', attrs, '201', (rb) {
         rb
           ..item('actor3', (rb) {
@@ -182,16 +186,8 @@ void main() {
     var qr = rb.build();
 
     expect(qr.toJson(), {
-      'view11': {
-        'type': 'val',
-        'val': 'value11',
-        'chid': '11',
-      },
-      'view12': {
-        'type': 'val',
-        'val': 'value12',
-        'chid': '12',
-      },
+      'view11': {'type': 'val', 'val': 'value11', 'chid': '11'},
+      'view12': {'type': 'val', 'val': 'value12', 'chid': '12'},
       'ref1': {
         'type': 'ref',
         'val': 'actor2',
@@ -201,16 +197,8 @@ void main() {
           'attr2': {'val': 20, 'chid': '1'},
         },
         'ref': {
-          'view21': {
-            'type': 'val',
-            'val': 'value21',
-            'chid': '21',
-          },
-          'view22': {
-            'type': 'val',
-            'val': 'value22',
-            'chid': '22',
-          },
+          'view21': {'type': 'val', 'val': 'value21', 'chid': '21'},
+          'view22': {'type': 'val', 'val': 'value22', 'chid': '22'},
         },
       },
       'list1': {
@@ -229,28 +217,12 @@ void main() {
         'chid': '201',
         'items': [
           {
-            'view100': {
-              'type': 'val',
-              'val': 'value3100',
-              'chid': '3100',
-            },
-            'view110': {
-              'type': 'val',
-              'val': 'value3110',
-              'chid': '3110',
-            },
+            'view100': {'type': 'val', 'val': 'value3100', 'chid': '3100'},
+            'view110': {'type': 'val', 'val': 'value3110', 'chid': '3110'},
           },
           {
-            'view100': {
-              'type': 'val',
-              'val': 'value4100',
-              'chid': '4100',
-            },
-            'view110': {
-              'type': 'val',
-              'val': 'value4110',
-              'chid': '4110',
-            },
+            'view100': {'type': 'val', 'val': 'value4100', 'chid': '4100'},
+            'view110': {'type': 'val', 'val': 'value4110', 'chid': '4110'},
           },
         ],
       },

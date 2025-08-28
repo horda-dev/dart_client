@@ -2,13 +2,9 @@ import 'package:horda_client/horda_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class TestQuery extends ActorQuery {
-  final view1 = ActorValueView<String>(
-    'view1',
-  );
+  final view1 = ActorValueView<String>('view1');
 
-  final view2 = ActorValueView<String>(
-    'view2',
-  );
+  final view2 = ActorValueView<String>('view2');
 
   final ref = ActorRefView(
     'ref1',
@@ -33,13 +29,9 @@ class TestQuery extends ActorQuery {
 }
 
 class TestRefQuery extends ActorQuery {
-  final view3 = ActorValueView<String>(
-    'view3',
-  );
+  final view3 = ActorValueView<String>('view3');
 
-  final view4 = ActorValueView<String>(
-    'view4',
-  );
+  final view4 = ActorValueView<String>('view4');
 
   @override
   void initViews(ActorQueryGroup group) {
@@ -50,13 +42,9 @@ class TestRefQuery extends ActorQuery {
 }
 
 class TestListQuery extends ActorQuery {
-  final view5 = ActorValueView<String>(
-    'view5',
-  );
+  final view5 = ActorValueView<String>('view5');
 
-  final view6 = ActorValueView<String>(
-    'view6',
-  );
+  final view6 = ActorValueView<String>('view6');
 
   @override
   void initViews(ActorQueryGroup group) {
@@ -69,10 +57,7 @@ class TestListQuery extends ActorQuery {
 void main() {
   test('query host should attach its views', () {
     var system = FluirClientSystem(
-      LoggedInConfig(
-        url: 'ws://0.0.0.0:8080/ws',
-        apiKey: 'apikey',
-      ),
+      LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
       TestAuthProvider(),
     );
     system.start();
