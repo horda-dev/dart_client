@@ -7,9 +7,9 @@ import 'message.dart';
 import 'provider.dart';
 import 'query.dart';
 
-extension FluirModelExtensions on BuildContext {
+extension HordaModelExtensions on BuildContext {
   void logout() {
-    final system = FluirSystemProvider.of(this);
+    final system = HordaSystemProvider.of(this);
     system.changeAuthState(null);
     system.reopen(
       IncognitoConfig(
@@ -20,16 +20,16 @@ extension FluirModelExtensions on BuildContext {
     system.clearStore();
   }
 
-  FluirAuthState get fluirAuthState {
-    return FluirSystemProvider.authStateOf(this);
+  HordaAuthState get hordaAuthState {
+    return HordaSystemProvider.authStateOf(this);
   }
 
-  FluirConnectionState get fluirConnectionState {
-    return FluirSystemProvider.connectionStateOf(this);
+  HordaConnectionState get hordaConnectionState {
+    return HordaSystemProvider.connectionStateOf(this);
   }
 
-  String? get fluirAuthUserId {
-    var state = fluirAuthState;
+  String? get hordaAuthUserId {
+    final state = hordaAuthState;
     return switch (state) {
       AuthStateValidating() => null,
       AuthStateIncognito() => null,
@@ -41,67 +41,68 @@ extension FluirModelExtensions on BuildContext {
 extension MessageExtensions on BuildContext {
   void dispatch(LocalMessage msg) {
     dispatchNotification(msg);
-    FluirSystemProvider.of(this).analyticsService?.reportMessage(msg);
+    HordaSystemProvider.of(this).analyticsService?.reportMessage(msg);
     Logger('Fluir').info('${widget.runtimeType} dispatched $msg');
   }
 }
 
-typedef ListSelector<Q extends ActorQuery> = ActorListView Function(Q q);
+typedef ListSelector<Q extends EntityQuery> = EntityListView Function(Q q);
 
-typedef RefSelector<P extends ActorQuery, C extends ActorQuery> =
-    ActorRefView<C> Function(P q);
+typedef RefSelector<P extends EntityQuery, C extends EntityQuery> =
+    EntityRefView<C> Function(P q);
 
-typedef RefIdSelector<Q extends ActorQuery> = ActorRefView Function(Q q);
+typedef RefIdSelector<Q extends EntityQuery> = EntityRefView Function(Q q);
 
-typedef ValueSelector<Q extends ActorQuery, T> =
-    ActorValueView<T> Function(Q q);
+typedef ValueSelector<Q extends EntityQuery, T> =
+    EntityValueView<T> Function(Q q);
 
-typedef CounterSelector<Q extends ActorQuery> = ActorCounterView Function(Q q);
+typedef CounterSelector<Q extends EntityQuery> =
+    EntityCounterView Function(Q q);
 
-typedef ListItemSelector<L extends ActorQuery, I extends ActorQuery> =
-    ActorListView<I> Function(L q);
+typedef ListItemSelector<L extends EntityQuery, I extends EntityQuery> =
+    EntityListView<I> Function(L q);
 
-extension ActorViewQueryExtensions on BuildContext {
-  ActorQueryProvider runActorQuery({
-    required EntityId actorId,
-    required ActorQuery query,
+extension EntityViewQueryExtensions on BuildContext {
+  EntityQueryProvider runEntityQuery({
+    required EntityId entityId,
+    required EntityQuery query,
     required Widget child,
   }) {
-    return ActorQueryProvider(
-      actorId: actorId,
+    return EntityQueryProvider(
+      entityId: entityId,
       query: query,
-      system: FluirSystemProvider.of(this),
+      system: HordaSystemProvider.of(this),
       child: child,
     );
   }
 
-  ActorQueryProvider actorQuery({
-    required EntityId actorId,
-    required ActorQuery query,
+  EntityQueryProvider entityQuery({
+    required EntityId entityId,
+    required EntityQuery query,
     required Widget child,
     Widget? loading,
     Widget? error,
   }) {
-    return ActorQueryProvider(
-      actorId: actorId,
+    return EntityQueryProvider(
+      entityId: entityId,
       query: query,
-      system: FluirSystemProvider.of(this),
+      system: HordaSystemProvider.of(this),
       child: Builder(
         builder: (context) {
-          var query = context.query<ActorQuery>();
+          final query = context.query<EntityQuery>();
           switch (query.state()) {
-            case ActorQueryState.created:
+            case EntityQueryState.created:
               return loading ??
                   Container(
                     alignment: Alignment.center,
                     child: CupertinoActivityIndicator(),
                   );
-            case ActorQueryState.error:
+            case EntityQueryState.error:
               return error ??
                   Container(alignment: Alignment.center, child: Text(':('));
-            case ActorQueryState.loaded:
+            case EntityQueryState.loaded:
               return child;
-            case ActorQueryState.stopped:
+            case EntityQueryState.stopped:
               return Container(alignment: Alignment.center, child: Text('?'));
           }
         },
@@ -109,47 +110,47 @@ extension ActorViewQueryExtensions on BuildContext {
     );
   }
 
-  ActorQueryDependencyBuilder<Q> query<Q extends ActorQuery>() {
-    var element = ActorQueryProvider.find<Q>(this);
+  EntityQueryDependencyBuilder<Q> query<Q extends EntityQuery>() {
+    var element = EntityQueryProvider.find<Q>(this);
 
-    return ActorQueryDependencyBuilder<Q>._(
+    return EntityQueryDependencyBuilder<Q>._(
       _Builder.root(Q, element.host, element, this, depend: true),
     );
   }
 
-  ActorQueryDependencyBuilder<Q> lookup<Q extends ActorQuery>() {
-    var element = ActorQueryProvider.find<Q>(this);
+  EntityQueryDependencyBuilder<Q> lookup<Q extends EntityQuery>() {
+    var element = EntityQueryProvider.find<Q>(this);
 
-    return ActorQueryDependencyBuilder<Q>._(
+    return EntityQueryDependencyBuilder<Q>._(
       _Builder.root(Q, element.host, element, this, depend: false),
     );
   }
 }
 
-class ActorQueryDependencyBuilder<Q extends ActorQuery> {
-  ActorQueryDependencyBuilder._(this._builder);
+class EntityQueryDependencyBuilder<Q extends EntityQuery> {
+  EntityQueryDependencyBuilder._(this._builder);
 
   final _Builder<Q> _builder;
 
-  ActorQueryDependencyBuilder<I> listItem<I extends ActorQuery>(
+  EntityQueryDependencyBuilder<I> listItem<I extends EntityQuery>(
     ListItemSelector<Q, I> sel,
     int index,
   ) {
-    return ActorQueryDependencyBuilder._(
+    return EntityQueryDependencyBuilder._(
       _builder.listItem(sel, index, maybe: false),
     );
   }
 
-  ActorQueryDependencyBuilder<C> ref<C extends ActorQuery>(
+  EntityQueryDependencyBuilder<C> ref<C extends EntityQuery>(
     RefSelector<Q, C> sel,
   ) {
-    return ActorQueryDependencyBuilder._(_builder.ref(sel, maybe: false));
+    return EntityQueryDependencyBuilder._(_builder.ref(sel, maybe: false));
   }
 
-  MaybeActorQueryDependencyBuilder<C> maybeRef<C extends ActorQuery>(
+  MaybeEntityQueryDependencyBuilder<C> maybeRef<C extends EntityQuery>(
     RefSelector<Q, C> sel,
   ) {
-    return MaybeActorQueryDependencyBuilder._(_builder.ref(sel, maybe: true));
+    return MaybeEntityQueryDependencyBuilder._(_builder.ref(sel, maybe: true));
   }
 
   // leaf
@@ -158,7 +159,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.id()!;
   }
 
-  ActorQueryState state() {
+  EntityQueryState state() {
     return _builder.state()!;
   }
 
@@ -213,7 +214,7 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
     return _builder.listLength(sel)!;
   }
 
-  ActorQueryValueHandlerBuilder<Q, T> addValueHandler<T>(
+  EntityQueryValueHandlerBuilder<Q, T> addValueHandler<T>(
     ValueSelector<Q, T> sel,
   ) {
     final context = _builder.context;
@@ -224,10 +225,10 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
       );
     }
 
-    return ActorQueryValueHandlerBuilder<Q, T>(_builder, sel);
+    return EntityQueryValueHandlerBuilder<Q, T>(_builder, sel);
   }
 
-  ActorQueryRefHandlerBuilder addRefHandler(RefIdSelector<Q> sel) {
+  EntityQueryRefHandlerBuilder addRefHandler(RefIdSelector<Q> sel) {
     final context = _builder.context;
 
     if (context is! StatefulElement || context.state is! ChangeHandlerState) {
@@ -236,10 +237,10 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
       );
     }
 
-    return ActorQueryRefHandlerBuilder<Q>(_builder, sel);
+    return EntityQueryRefHandlerBuilder<Q>(_builder, sel);
   }
 
-  ActorQueryCounterHandlerBuilder addCounterHandler(CounterSelector<Q> sel) {
+  EntityQueryCounterHandlerBuilder addCounterHandler(CounterSelector<Q> sel) {
     final context = _builder.context;
 
     if (context is! StatefulElement || context.state is! ChangeHandlerState) {
@@ -248,10 +249,10 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
       );
     }
 
-    return ActorQueryCounterHandlerBuilder<Q>(_builder, sel);
+    return EntityQueryCounterHandlerBuilder<Q>(_builder, sel);
   }
 
-  ActorQueryListHandlerBuilder addListHandler(ListSelector<Q> sel) {
+  EntityQueryListHandlerBuilder addListHandler(ListSelector<Q> sel) {
     final context = _builder.context;
 
     if (context is! StatefulElement || context.state is! ChangeHandlerState) {
@@ -260,14 +261,14 @@ class ActorQueryDependencyBuilder<Q extends ActorQuery> {
       );
     }
 
-    return ActorQueryListHandlerBuilder<Q>(_builder, sel);
+    return EntityQueryListHandlerBuilder<Q>(_builder, sel);
   }
 }
 
 typedef ChangeHandler<C extends Change> = void Function(C change);
 
-class ActorQueryValueHandlerBuilder<Q extends ActorQuery, T> {
-  ActorQueryValueHandlerBuilder(this._builder, this._sel);
+class EntityQueryValueHandlerBuilder<Q extends EntityQuery, T> {
+  EntityQueryValueHandlerBuilder(this._builder, this._sel);
 
   final _Builder<Q> _builder;
   final ValueSelector<Q, T> _sel;
@@ -280,8 +281,8 @@ class ActorQueryValueHandlerBuilder<Q extends ActorQuery, T> {
   }
 }
 
-class ActorQueryRefHandlerBuilder<Q extends ActorQuery> {
-  ActorQueryRefHandlerBuilder(this._builder, this._sel);
+class EntityQueryRefHandlerBuilder<Q extends EntityQuery> {
+  EntityQueryRefHandlerBuilder(this._builder, this._sel);
 
   final _Builder<Q> _builder;
   final RefIdSelector<Q> _sel;
@@ -291,8 +292,8 @@ class ActorQueryRefHandlerBuilder<Q extends ActorQuery> {
   }
 }
 
-class ActorQueryCounterHandlerBuilder<Q extends ActorQuery> {
-  ActorQueryCounterHandlerBuilder(this._builder, this._sel);
+class EntityQueryCounterHandlerBuilder<Q extends EntityQuery> {
+  EntityQueryCounterHandlerBuilder(this._builder, this._sel);
 
   final _Builder<Q> _builder;
   final CounterSelector<Q> _sel;
@@ -310,8 +311,8 @@ class ActorQueryCounterHandlerBuilder<Q extends ActorQuery> {
   }
 }
 
-class ActorQueryListHandlerBuilder<Q extends ActorQuery> {
-  ActorQueryListHandlerBuilder(this._builder, this._sel);
+class EntityQueryListHandlerBuilder<Q extends EntityQuery> {
+  EntityQueryListHandlerBuilder(this._builder, this._sel);
 
   final _Builder<Q> _builder;
   final ListSelector<Q> _sel;
@@ -333,29 +334,29 @@ class ActorQueryListHandlerBuilder<Q extends ActorQuery> {
   }
 }
 
-class MaybeActorQueryDependencyBuilder<Q extends ActorQuery> {
-  MaybeActorQueryDependencyBuilder._(this._builder);
+class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
+  MaybeEntityQueryDependencyBuilder._(this._builder);
 
   final _Builder<Q> _builder;
 
-  MaybeActorQueryDependencyBuilder<I> listItem<I extends ActorQuery>(
+  MaybeEntityQueryDependencyBuilder<I> listItem<I extends EntityQuery>(
     ListItemSelector<Q, I> sel,
     int index,
   ) {
-    return MaybeActorQueryDependencyBuilder._(
+    return MaybeEntityQueryDependencyBuilder._(
       _builder.listItem(sel, index, maybe: true),
     );
   }
 
-  MaybeActorQueryDependencyBuilder<C> ref<C extends ActorQuery>(
+  MaybeEntityQueryDependencyBuilder<C> ref<C extends EntityQuery>(
     RefSelector<Q, C> sel,
   ) {
-    return MaybeActorQueryDependencyBuilder._(_builder.ref(sel, maybe: true));
+    return MaybeEntityQueryDependencyBuilder._(_builder.ref(sel, maybe: true));
   }
 
   // leaf
 
-  ActorQueryState? state() {
+  EntityQueryState? state() {
     return _builder.state();
   }
 
@@ -384,7 +385,7 @@ class MaybeActorQueryDependencyBuilder<Q extends ActorQuery> {
   }
 }
 
-class _Builder<Q extends ActorQuery> {
+class _Builder<Q extends EntityQuery> {
   _Builder.root(
     this.queryType,
     this.host,
@@ -418,7 +419,7 @@ class _Builder<Q extends ActorQuery> {
 
   final Type queryType;
 
-  _Builder<I> listItem<I extends ActorQuery>(
+  _Builder<I> listItem<I extends EntityQuery>(
     ListItemSelector<Q, I> sel,
     int index, {
     required bool maybe,
@@ -446,7 +447,7 @@ class _Builder<Q extends ActorQuery> {
     );
   }
 
-  _Builder<C> ref<C extends ActorQuery>(
+  _Builder<C> ref<C extends EntityQuery>(
     RefSelector<Q, C> sel, {
     required bool maybe,
   }) {
@@ -480,7 +481,7 @@ class _Builder<Q extends ActorQuery> {
     return id;
   }
 
-  ActorQueryState? state() {
+  EntityQueryState? state() {
     var newPath = path.append(ActorQueryPath.state());
 
     if (depend) {
@@ -806,7 +807,7 @@ class _Builder<Q extends ActorQuery> {
   }
 
   void addChangeHandler<C extends Change>(
-    ActorView Function(Q) sel,
+    EntityView Function(Q) sel,
     dynamic handler,
   ) {
     final view = sel(host.query as Q);

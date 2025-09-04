@@ -1,15 +1,15 @@
 import 'package:horda_client/horda_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class TestQuery extends ActorQuery {
-  final userName = ActorValueView<String>('name', subscribe: true);
+class TestQuery extends EntityQuery {
+  final userName = EntityValueView<String>('name', subscribe: true);
 
-  final threadCount = ActorCounterView('threadCount', subscribe: false);
+  final threadCount = EntityCounterView('threadCount', subscribe: false);
 
-  final speechCount = ActorCounterView('speechCount', subscribe: true);
+  final speechCount = EntityCounterView('speechCount', subscribe: true);
 
   @override
-  void initViews(ActorQueryGroup views) {
+  void initViews(EntityQueryGroup views) {
     views
       ..add(userName)
       ..add(threadCount)
@@ -17,8 +17,8 @@ class TestQuery extends ActorQuery {
   }
 }
 
-class RefQuery extends ActorQuery {
-  final refview = ActorRefView(
+class RefQuery extends EntityQuery {
+  final refview = EntityRefView(
     'name',
     query: TestQuery(),
     attrs: ['attr1', 'attr2'],
@@ -26,14 +26,14 @@ class RefQuery extends ActorQuery {
   );
 
   @override
-  void initViews(ActorQueryGroup views) {
+  void initViews(EntityQueryGroup views) {
     views..add(refview);
   }
 }
 
 void main() {
   test('query should handle subscribe flag', () async {
-    final system = FluirClientSystem(
+    final system = HordaClientSystem(
       LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
       TestAuthProvider(),
     );
@@ -54,7 +54,7 @@ void main() {
   });
 
   test('refquery should handle subscribe flag within subqueries', () async {
-    final system = FluirClientSystem(
+    final system = HordaClientSystem(
       LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
       TestAuthProvider(),
     );

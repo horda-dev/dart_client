@@ -12,17 +12,17 @@ import 'devtool.dart';
 import 'provider.dart';
 import 'system.dart';
 
-abstract class ActorQuery implements ActorQueryGroup {
-  ActorQuery() {
+abstract class EntityQuery implements EntityQueryGroup {
+  EntityQuery() {
     initViews(this);
   }
 
   String get name => '$runtimeType';
 
-  Map<String, ActorView> get views => _views;
+  Map<String, EntityView> get views => _views;
 
   @override
-  void add(ActorView view) {
+  void add(EntityView view) {
     _views[view.name] = view;
   }
 
@@ -36,34 +36,34 @@ abstract class ActorQuery implements ActorQueryGroup {
     return qb;
   }
 
-  void initViews(ActorQueryGroup views);
+  void initViews(EntityQueryGroup views);
 
-  ActorQueryHost rootHost(String parentLoggerName, FluirClientSystem system) {
+  ActorQueryHost rootHost(String parentLoggerName, HordaClientSystem system) {
     return ActorQueryHost(parentLoggerName, null, this, system);
   }
 
   ActorQueryHost childHost(
     String parentLoggerName,
     ActorViewHost parent,
-    FluirClientSystem system,
+    HordaClientSystem system,
   ) {
     return ActorQueryHost(parentLoggerName, parent, this, system);
   }
 
-  final _views = <String, ActorView>{};
+  final _views = <String, EntityView>{};
 }
 
-class EmptyQuery extends ActorQuery {
+class EmptyQuery extends EntityQuery {
   @override
-  void initViews(ActorQueryGroup views) {}
+  void initViews(EntityQueryGroup views) {}
 }
 
 typedef ViewConvertFunc = dynamic Function(dynamic val);
 
 dynamic _identity(dynamic val) => val;
 
-abstract class ActorView {
-  ActorView(
+abstract class EntityView {
+  EntityView(
     this.name, {
     this.subscribe = true,
     this.nullable = false,
@@ -83,14 +83,14 @@ abstract class ActorView {
   ActorViewHost childHost(
     String parentLoggerName,
     ActorQueryHost parent,
-    FluirClientSystem system,
+    HordaClientSystem system,
   );
 }
 
 typedef ValueViewConvertFunc<T> = T? Function(dynamic val);
 
-class ActorValueView<T> extends ActorView {
-  ActorValueView(
+class EntityValueView<T> extends EntityView {
+  EntityValueView(
     super.name, {
     super.subscribe,
     ValueViewConvertFunc<T>? convert,
@@ -108,7 +108,7 @@ class ActorValueView<T> extends ActorView {
   ActorViewHost childHost(
     String parentLoggerName,
     ActorQueryHost parent,
-    FluirClientSystem system,
+    HordaClientSystem system,
   ) {
     return ActorValueViewHost<T>(parentLoggerName, parent, this, system);
   }
@@ -121,8 +121,8 @@ T _defaultValueConvert<T>(String viewName, dynamic val) {
   return val;
 }
 
-class ActorDateTimeView extends ActorValueView<DateTime> {
-  ActorDateTimeView(
+class EntityDateTimeView extends EntityValueView<DateTime> {
+  EntityDateTimeView(
     super.name, {
     required this.isUtc,
     super.subscribe,
@@ -153,8 +153,8 @@ DateTime? dateTimeConvert(
   return DateTime.fromMillisecondsSinceEpoch(val, isUtc: isUtc);
 }
 
-class ActorCounterView<T> extends ActorView {
-  ActorCounterView(super.name, {super.subscribe, super.nullable});
+class EntityCounterView<T> extends EntityView {
+  EntityCounterView(super.name, {super.subscribe, super.nullable});
 
   @override
   ViewQueryDefBuilder queryBuilder() {
@@ -165,14 +165,14 @@ class ActorCounterView<T> extends ActorView {
   ActorViewHost childHost(
     String parentLoggerName,
     ActorQueryHost parent,
-    FluirClientSystem system,
+    HordaClientSystem system,
   ) {
     return ActorCounterViewHost(parentLoggerName, parent, this, system);
   }
 }
 
-class ActorRefView<S extends ActorQuery> extends ActorView {
-  ActorRefView(
+class EntityRefView<S extends EntityQuery> extends EntityView {
+  EntityRefView(
     super.name, {
     super.subscribe,
     super.nullable,
@@ -199,14 +199,14 @@ class ActorRefView<S extends ActorQuery> extends ActorView {
   ActorViewHost childHost(
     String parentLoggerName,
     ActorQueryHost parent,
-    FluirClientSystem system,
+    HordaClientSystem system,
   ) {
     return ActorRefViewHost(parentLoggerName, parent, this, system);
   }
 }
 
-class ActorListView<S extends ActorQuery> extends ActorView {
-  ActorListView(
+class EntityListView<S extends EntityQuery> extends EntityView {
+  EntityListView(
     String name, {
     super.subscribe,
     required this.query,
@@ -233,7 +233,7 @@ class ActorListView<S extends ActorQuery> extends ActorView {
   ActorViewHost childHost(
     String parentLoggerName,
     ActorQueryHost parent,
-    FluirClientSystem system,
+    HordaClientSystem system,
   ) {
     return ActorListViewHost(parentLoggerName, parent, this, system);
   }
@@ -264,9 +264,9 @@ class ActorQueryHost {
     logger.info('host created');
   }
 
-  final ActorQuery query;
+  final EntityQuery query;
 
-  final FluirClientSystem system;
+  final HordaClientSystem system;
 
   late final Logger logger;
 
@@ -274,7 +274,7 @@ class ActorQueryHost {
 
   EntityId? actorId;
 
-  ActorQueryState get state => _state;
+  EntityQueryState get state => _state;
 
   bool get isAttached => actorId != null;
 
@@ -310,7 +310,7 @@ class ActorQueryHost {
 
     try {
       final res = await system.query(
-        actorId: actorId,
+        entityId: actorId,
         name: query.name,
         def: qdef,
       );
@@ -328,7 +328,7 @@ class ActorQueryHost {
 
       logger.info('$actorId: ran');
     } catch (e) {
-      _changeState(ActorQueryState.error);
+      _changeState(EntityQueryState.error);
 
       logger.severe('$actorId: query ran with error: $e');
     }
@@ -415,7 +415,7 @@ class ActorQueryHost {
       }
     }
 
-    _changeState(ActorQueryState.created);
+    _changeState(EntityQueryState.created);
 
     logger.info('$actorId: detached');
 
@@ -428,7 +428,7 @@ class ActorQueryHost {
 
     var oldActorId = actorId;
 
-    _changeState(ActorQueryState.stopped);
+    _changeState(EntityQueryState.stopped);
 
     if (isAttached) {
       detach();
@@ -462,12 +462,12 @@ class ActorQueryHost {
     );
 
     if (_notLoadedChildren.isEmpty) {
-      _changeState(ActorQueryState.loaded);
+      _changeState(EntityQueryState.loaded);
       parent?.reportQuery(actorId!);
     }
   }
 
-  void _changeState(ActorQueryState newState) {
+  void _changeState(EntityQueryState newState) {
     var oldState = _state;
     _state = newState;
     _watcher?.call(ActorQueryPath.state());
@@ -475,7 +475,7 @@ class ActorQueryHost {
     logger.info('$actorId: query state changed from $oldState to $_state');
   }
 
-  var _state = ActorQueryState.created;
+  var _state = EntityQueryState.created;
   // maps view name to view host
   final _children = <String, ActorViewHost>{};
   final _notLoadedChildren = <String>{};
@@ -483,10 +483,10 @@ class ActorQueryHost {
   bool _isStopped = false;
 }
 
-enum ActorQueryState { created, loaded, error, stopped }
+enum EntityQueryState { created, loaded, error, stopped }
 
-abstract class ActorQueryGroup {
-  void add(ActorView view);
+abstract class EntityQueryGroup {
+  void add(EntityView view);
 }
 
 abstract class ActorViewHost {
@@ -500,9 +500,9 @@ abstract class ActorViewHost {
 
   final String parentLoggerName;
 
-  final ActorView view;
+  final EntityView view;
 
-  final FluirClientSystem system;
+  final HordaClientSystem system;
 
   final Logger logger;
 
@@ -602,7 +602,7 @@ abstract class ActorViewHost {
   /// In case of views without references:
   /// - Reports to parent [ActorQueryHost] that this [ActorViewHost] is ready.
   ///
-  /// In case of views with references([ActorRefView], [ActorListView]):
+  /// In case of views with references([EntityRefView], [EntityListView]):
   /// - Lets the view know that initial changes have been projected. [reportQuery], in this
   /// case, will be the one who reports this view as ready to it's parent [ActorQueryHost].
   ///
@@ -968,7 +968,7 @@ class ActorRefViewHost extends ActorViewHost {
   ActorRefViewHost(
     super.parentLoggerName,
     super.parent,
-    ActorRefView super.view,
+    EntityRefView super.view,
     super.system,
   ) {
     // Initialize child in constructor body to let super() constructor run first,
@@ -993,7 +993,7 @@ class ActorRefViewHost extends ActorViewHost {
   EntityId? get refId => super.value;
 
   @override
-  ActorRefView get view => super.view as ActorRefView;
+  EntityRefView get view => super.view as EntityRefView;
 
   T valueAttr<T>(String attrName) {
     if (refId == null) {
@@ -1162,7 +1162,7 @@ class ActorListViewHost extends ActorViewHost {
   Iterable<EntityId> get items => super.value;
 
   @override
-  ActorListView get view => super.view as ActorListView;
+  EntityListView get view => super.view as EntityListView;
 
   T valueAttr<T>(String attrName, int index) {
     if (index >= items.length) {
@@ -1599,8 +1599,8 @@ abstract class InheritedModelNotifier<T> extends InheritedWidget {
 }
 
 class FluirSystemProviderElement
-    extends InheritedModelNotifierElement<FluirModelAspect> {
-  FluirSystemProviderElement(FluirSystemProvider widget)
+    extends InheritedModelNotifierElement<HordaModelAspect> {
+  FluirSystemProviderElement(HordaSystemProvider widget)
     : conn = widget.system.conn,
       super(widget) {
     conn.addListener(_onReconnect);
@@ -1723,15 +1723,15 @@ class InheritedModelNotifierElement<T> extends InheritedElement {
 
 class ActorQueryProviderElement
     extends InheritedModelNotifierElement<ActorQueryPath> {
-  ActorQueryProviderElement(super.widget, this.query, FluirClientSystem system)
+  ActorQueryProviderElement(super.widget, this.query, HordaClientSystem system)
     : host = query.rootHost('Query', system) {
-    actorId = provider.actorId;
+    actorId = provider.entityId;
 
     logger = Logger('Query.${query.name}');
     logger.info('$actorId: provider created');
   }
 
-  final ActorQuery query;
+  final EntityQuery query;
 
   final ActorQueryHost host;
 
@@ -1739,7 +1739,7 @@ class ActorQueryProviderElement
 
   late final EntityId actorId;
 
-  ActorQueryProvider get provider => widget as ActorQueryProvider;
+  EntityQueryProvider get provider => widget as EntityQueryProvider;
 
   @override
   void mount(Element? parent, Object? newSlot) {
@@ -1780,19 +1780,19 @@ class ActorQueryProviderElement
 
 typedef ActorQueryPathFunc = void Function(ActorQueryPath path);
 
-class ActorQueryProvider extends InheritedModelNotifier<ActorQueryPath> {
-  ActorQueryProvider({
-    required this.actorId,
+class EntityQueryProvider extends InheritedModelNotifier<ActorQueryPath> {
+  EntityQueryProvider({
+    required this.entityId,
     required this.query,
     required this.system,
     required super.child,
-  }) : super(key: ValueKey('$actorId/${query.runtimeType}'));
+  }) : super(key: ValueKey('$entityId/${query.runtimeType}'));
 
-  final EntityId actorId;
+  final EntityId entityId;
 
-  final ActorQuery query;
+  final EntityQuery query;
 
-  final FluirClientSystem system;
+  final HordaClientSystem system;
 
   @override
   InheritedElement createElement() {
@@ -1812,7 +1812,7 @@ class ActorQueryProvider extends InheritedModelNotifier<ActorQueryPath> {
     return false;
   }
 
-  static ActorQueryProviderElement find<T extends ActorQuery>(
+  static ActorQueryProviderElement find<T extends EntityQuery>(
     BuildContext context,
   ) {
     ActorQueryProviderElement? found;
@@ -1920,7 +1920,7 @@ class AttributesHost {
   final String parentLoggerName;
   final String viewName;
   final List<String> viewAttrs;
-  final FluirClientSystem system;
+  final HordaClientSystem system;
   final Logger logger;
 
   /// Id of type [String] produced by combining id of two actors via [CompositeId]

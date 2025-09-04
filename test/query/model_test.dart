@@ -1,6 +1,6 @@
-import 'package:horda_client/horda_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:horda_client/src/query.dart';
 
 // ignore: must_be_immutable
 class TestModel extends InheritedModelNotifier<String> {

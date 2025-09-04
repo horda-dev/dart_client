@@ -5,21 +5,21 @@ import 'connection.dart';
 import 'query.dart';
 import 'system.dart';
 
-enum FluirModelAspect { authState, connectionState }
+enum HordaModelAspect { authState, connectionState }
 
-class FluirSystemProvider extends InheritedModelNotifier<FluirModelAspect> {
-  FluirSystemProvider({Key? key, required this.system, required Widget child})
+class HordaSystemProvider extends InheritedModelNotifier<HordaModelAspect> {
+  HordaSystemProvider({Key? key, required this.system, required Widget child})
     : super(key: key, child: child) {
     system.conn.addListener(() {
-      aspectChanges.add(FluirModelAspect.connectionState);
+      aspectChanges.add(HordaModelAspect.connectionState);
     });
 
     system.authState.addListener(() {
-      aspectChanges.add(FluirModelAspect.authState);
+      aspectChanges.add(HordaModelAspect.authState);
     });
   }
 
-  final FluirClientSystem system;
+  final HordaClientSystem system;
 
   @override
   InheritedElement createElement() {
@@ -28,15 +28,15 @@ class FluirSystemProvider extends InheritedModelNotifier<FluirModelAspect> {
 
   @override
   bool updateShouldNotifyDependent(
-    Set<FluirModelAspect> changes,
-    Set<FluirModelAspect> dependencies,
+    Set<HordaModelAspect> changes,
+    Set<HordaModelAspect> dependencies,
   ) {
     return dependencies.intersection(changes).isNotEmpty;
   }
 
-  static FluirClientSystem of(BuildContext context) {
+  static HordaClientSystem of(BuildContext context) {
     final provider = context
-        .findAncestorWidgetOfExactType<FluirSystemProvider>();
+        .findAncestorWidgetOfExactType<HordaSystemProvider>();
 
     if (provider == null) {
       throw FluirError('no FluirSystemProvider found');
@@ -44,28 +44,28 @@ class FluirSystemProvider extends InheritedModelNotifier<FluirModelAspect> {
     return provider.system;
   }
 
-  static FluirConnectionState connectionStateOf(BuildContext context) {
-    return InheritedModelNotifier.inheritFrom<FluirSystemProvider>(
+  static HordaConnectionState connectionStateOf(BuildContext context) {
+    return InheritedModelNotifier.inheritFrom<HordaSystemProvider>(
       context,
-      aspect: FluirModelAspect.connectionState,
+      aspect: HordaModelAspect.connectionState,
     ).system.conn.value;
   }
 
-  static FluirAuthState authStateOf(BuildContext context) {
-    return InheritedModelNotifier.inheritFrom<FluirSystemProvider>(
+  static HordaAuthState authStateOf(BuildContext context) {
+    return InheritedModelNotifier.inheritFrom<HordaSystemProvider>(
       context,
-      aspect: FluirModelAspect.authState,
+      aspect: HordaModelAspect.authState,
     ).system.authState.value;
   }
 }
 
-sealed class FluirAuthState {}
+sealed class HordaAuthState {}
 
-class AuthStateValidating implements FluirAuthState {}
+class AuthStateValidating implements HordaAuthState {}
 
-class AuthStateIncognito implements FluirAuthState {}
+class AuthStateIncognito implements HordaAuthState {}
 
-class AuthStateLoggedIn implements FluirAuthState {
+class AuthStateLoggedIn implements HordaAuthState {
   AuthStateLoggedIn({required this.userId});
 
   final String userId;

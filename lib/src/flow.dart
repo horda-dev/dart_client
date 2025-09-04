@@ -10,13 +10,13 @@ import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
 
-typedef FluirFlowLocalHandler<E extends LocalEvent> =
-    Future<void> Function(E event, FluirFlowContext context);
+typedef HordaProcessLocalHandler<E extends LocalEvent> =
+    Future<void> Function(E event, HordaProcessContext context);
 
-abstract class FluirFlowContext {
+abstract class HordaProcessContext {
   Logger get logger;
 
-  FluirAuthState get authState;
+  HordaAuthState get authState;
 
   void logout();
 
@@ -26,37 +26,38 @@ abstract class FluirFlowContext {
 
   void sendLocalAfter(Duration delay, LocalCommand cmd);
 
-  void sendRemote(String actorName, String actorId, RemoteCommand cmd);
+  void sendRemote(String entityName, String entityId, RemoteCommand cmd);
 
   Future<RemoteEvent> callRemote(
-    String actorName,
-    String actorId,
+    String entityName,
+    String entityId,
     RemoteCommand cmd,
   );
 
-  /// Sends a [RemoteEvent] to the server and returns a [FlowResult2]
+  /// Sends a [RemoteEvent] to the server and returns a [FlowResult]
   /// after the event is handled by [Flow].
   Future<FlowResult> dispatchEvent(RemoteEvent event);
 }
 
-abstract class FluirFlow extends ProxyWidget implements FluirFlowHandlers {
-  FluirFlow({super.key, required super.child}) {
+abstract class HordaProcess extends ProxyWidget
+    implements HordaProcessHandlers {
+  HordaProcess({super.key, required super.child}) {
     initHandlers(this);
   }
 
-  void initHandlers(FluirFlowHandlers handlers);
+  void initHandlers(HordaProcessHandlers handlers);
 
-  void init(FluirFlowContext context) {}
+  void init(HordaProcessContext context) {}
 
-  void dispose(FluirFlowContext context) {}
+  void dispose(HordaProcessContext context) {}
 
   @override
   Element createElement() {
-    return FluirFlowElement(this);
+    return HordaProcessElement(this);
   }
 
   @override
-  void addLocal<E extends LocalEvent>(FluirFlowLocalHandler<E> handler) {
+  void addLocal<E extends LocalEvent>(HordaProcessLocalHandler<E> handler) {
     assert(() {
       return !_handlers.containsKey(E);
     }());
@@ -69,7 +70,7 @@ abstract class FluirFlow extends ProxyWidget implements FluirFlowHandlers {
   }
 
   // event is either Notification or Event subclass
-  void _handle(Object event, FluirFlowContext context) async {
+  void _handle(Object event, HordaProcessContext context) async {
     context.logger.fine('handling $event...');
     await _handlers[event.runtimeType](event, context);
     context.logger.info('handled $event');
@@ -78,28 +79,28 @@ abstract class FluirFlow extends ProxyWidget implements FluirFlowHandlers {
   final _handlers = <Type, dynamic>{};
 }
 
-abstract class FluirFlowHandlers {
-  void addLocal<E extends LocalEvent>(FluirFlowLocalHandler<E> handler);
+abstract class HordaProcessHandlers {
+  void addLocal<E extends LocalEvent>(HordaProcessLocalHandler<E> handler);
 }
 
-class FluirFlowElement extends ProxyElement
+class HordaProcessElement extends ProxyElement
     with NotifiableElementMixin
-    implements FluirFlowContext {
-  FluirFlowElement(super.widget)
+    implements HordaProcessContext {
+  HordaProcessElement(super.widget)
     : logger = Logger('Fluir.Flow.${widget.runtimeType}');
 
-  FluirFlow get widget => super.widget as FluirFlow;
+  HordaProcess get widget => super.widget as HordaProcess;
 
-  FluirClientSystem get system {
+  HordaClientSystem get system {
     // FluirSystemProvider.of(this) is still needed because onNotification() can be called
     // before mount(), when the system instance hasn't been assigned yet.
-    return _system ?? FluirSystemProvider.of(this);
+    return _system ?? HordaSystemProvider.of(this);
   }
 
   // An instance has to be assigned on mount because previously, when FluirSystemProvider.of(this) was called
   // while a FluirFlowElement is being disposed, e.g. through calling context.unsubscribe(),
   // a 'Looking up a deactivated widget's ancestor is unsafe.' exception will be thrown.
-  FluirClientSystem? _system;
+  HordaClientSystem? _system;
 
   @override
   void logout() {
@@ -123,8 +124,8 @@ class FluirFlowElement extends ProxyElement
   }
 
   @override
-  FluirAuthState get authState {
-    return FluirSystemProvider.authStateOf(this);
+  HordaAuthState get authState {
+    return HordaSystemProvider.authStateOf(this);
   }
 
   @override
@@ -155,26 +156,26 @@ class FluirFlowElement extends ProxyElement
   }
 
   @override
-  void sendRemote(String actorName, String actorId, RemoteCommand cmd) {
-    system.sendRemote(actorName, actorId, cmd);
+  void sendRemote(String entityName, String entityId, RemoteCommand cmd) {
+    system.sendRemote(entityName, entityId, cmd);
   }
 
   @override
   Future<RemoteEvent> callRemote(
-    String actorName,
-    String actorId,
+    String entityName,
+    String entityId,
     RemoteCommand cmd,
   ) async {
     try {
-      logger.info('calling $actorId with $cmd...');
+      logger.info('calling $entityId with $cmd...');
 
-      var event = await system.callRemote(actorName, actorId, cmd);
+      var event = await system.callRemote(entityName, entityId, cmd);
 
-      logger.info('received $event from $actorId call');
+      logger.info('received $event from $entityId call');
 
       return event;
     } on Exception catch (e) {
-      var msg = 'received $e from call $cmd to $actorId';
+      var msg = 'received $e from call $cmd to $entityId';
       logger.warning(msg);
       return FluirErrorEvent(msg);
     }
@@ -202,7 +203,7 @@ class FluirFlowElement extends ProxyElement
   @override
   void mount(Element? parent, Object? newSlot) {
     super.mount(parent, newSlot);
-    _system = FluirSystemProvider.of(this);
+    _system = HordaSystemProvider.of(this);
     widget.init(this);
     logger.info('element mounted');
   }
@@ -232,14 +233,14 @@ class FluirFlowElement extends ProxyElement
   @override
   void notifyClients(covariant ProxyWidget oldWidget) {}
 
-  void register(FluirActor actor) {
+  void register(HordaEntity actor) {
     for (var type in actor.handleCommands) {
       assert(!_registeredActors.containsKey(type));
       _registeredActors[type] = actor;
     }
   }
 
-  void unregister(FluirActor actor) {
+  void unregister(HordaEntity actor) {
     for (var type in actor.handleCommands) {
       assert(_registeredActors.containsKey(type));
       _registeredActors.remove(type);
@@ -247,5 +248,5 @@ class FluirFlowElement extends ProxyElement
   }
 
   // maps actor's handled command type to actor instance
-  final _registeredActors = <Type, FluirActor>{};
+  final _registeredActors = <Type, HordaEntity>{};
 }

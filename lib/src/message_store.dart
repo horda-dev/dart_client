@@ -11,7 +11,7 @@ class ClientMessageStore {
   ClientMessageStore(this.system, this.conn)
     : logger = Logger('Fluir.MessageStore');
 
-  final FluirClientSystem system;
+  final HordaClientSystem system;
 
   final Connection conn;
 
