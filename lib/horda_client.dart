@@ -2,7 +2,7 @@ library horda_client;
 
 export 'package:horda_core/horda_core.dart';
 
-export 'src/actors.dart';
+export 'src/entities.dart';
 export 'src/connection.dart'
     show
         HordaConnectionState,
@@ -16,7 +16,7 @@ export 'src/connection.dart'
         LoggedInConfig;
 export 'src/context.dart';
 export 'src/devtool.dart';
-export 'src/flow.dart';
+export 'src/process.dart';
 export 'src/message.dart';
 export 'src/provider.dart';
 export 'src/query.dart'

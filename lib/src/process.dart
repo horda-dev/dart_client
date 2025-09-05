@@ -4,7 +4,7 @@ import 'package:horda_core/horda_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
 
-import 'actors.dart';
+import 'entities.dart';
 import 'connection.dart';
 import 'message.dart';
 import 'provider.dart';

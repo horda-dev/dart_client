@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
 
-import 'flow.dart';
+import 'process.dart';
 import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
