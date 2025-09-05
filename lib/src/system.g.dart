@@ -9,8 +9,8 @@ part of 'system.dart';
 Map<String, dynamic> _$SendCallLabelsToJson(SendCallLabels instance) =>
     <String, dynamic>{
       'senderId': instance.senderId,
-      'actorId': instance.actorId,
-      'actorName': instance.actorName,
+      'entityId': instance.entityId,
+      'entityName': instance.entityName,
     };
 
 Map<String, dynamic> _$DispatchLabelsToJson(DispatchLabels instance) =>

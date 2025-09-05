@@ -53,12 +53,12 @@ class RunApp extends StatelessWidget {
   Widget build(BuildContext context) {
     var app = TestApp();
 
-    if (context.fluirAuthUserId == null) {
+    if (context.hordaAuthUserId == null) {
       throw Exception('user id is null');
     }
 
-    return context.runActorQuery(
-      actorId: 'user1',
+    return context.runEntityQuery(
+      entityId: 'user1',
       query: TestQuery(),
       child: app,
     );
@@ -72,12 +72,12 @@ class TestApp extends StatelessWidget {
     print(context.query<TestQuery>().state());
     print(context.query<TestQuery>().ref((q) => q.ref1).value((q) => q.view3));
     switch (state) {
-      case ActorQueryState.created:
+      case EntityQueryState.created:
         return _buildLoading(context);
-      case ActorQueryState.error:
-      case ActorQueryState.stopped:
+      case EntityQueryState.error:
+      case EntityQueryState.stopped:
         return _buildError(context);
-      case ActorQueryState.loaded:
+      case EntityQueryState.loaded:
         return _buildLoaded(context);
     }
   }
@@ -95,39 +95,39 @@ class TestApp extends StatelessWidget {
   }
 }
 
-class TestQuery extends ActorQuery {
-  var list1 = ActorListView('list1', query: TestListQuery());
+class TestQuery extends EntityQuery {
+  var list1 = EntityListView('list1', query: TestListQuery());
 
-  var ref1 = ActorRefView('ref1', query: TestRefQuery());
+  var ref1 = EntityRefView('ref1', query: TestRefQuery());
 
   @override
-  void initViews(ActorQueryGroup views) {
+  void initViews(EntityQueryGroup views) {
     views
       ..add(list1)
       ..add(ref1);
   }
 }
 
-class TestListQuery extends ActorQuery {
-  var view1 = ActorValueView<String>('view1');
+class TestListQuery extends EntityQuery {
+  var view1 = EntityValueView<String>('view1');
 
-  var view2 = ActorValueView<String>('view2');
+  var view2 = EntityValueView<String>('view2');
 
   @override
-  void initViews(ActorQueryGroup views) {
+  void initViews(EntityQueryGroup views) {
     views
       ..add(view1)
       ..add(view2);
   }
 }
 
-class TestRefQuery extends ActorQuery {
-  var view3 = ActorValueView<String>('view3');
+class TestRefQuery extends EntityQuery {
+  var view3 = EntityValueView<String>('view3');
 
-  var view4 = ActorValueView<String>('view4');
+  var view4 = EntityValueView<String>('view4');
 
   @override
-  void initViews(ActorQueryGroup views) {
+  void initViews(EntityQueryGroup views) {
     views
       ..add(view3)
       ..add(view4);

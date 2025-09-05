@@ -3,28 +3,28 @@ import 'dart:collection';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
 
-import 'flow.dart';
+import 'process.dart';
 import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
 
-typedef FluirActorHandler<C extends LocalCommand> =
-    Future<void> Function(C cmd, FluirActorContext context);
+typedef HordaEntityHandler<C extends LocalCommand> =
+    Future<void> Function(C cmd, HordaEntityContext context);
 
-abstract class FluirActorContext {
+abstract class HordaEntityContext {
   Logger get logger;
 }
 
-class FluirActor {
-  FluirActor({required this.name, required this.context});
+class HordaEntity {
+  HordaEntity({required this.name, required this.context});
 
   final String name;
 
-  final FluirActorContext context;
+  final HordaEntityContext context;
 
   Iterable<Type> get handleCommands => _handlers.keys;
 
-  void addHandler<C extends LocalCommand>(FluirActorHandler<C> handler) {
+  void addHandler<C extends LocalCommand>(HordaEntityHandler<C> handler) {
     assert(!_handlers.containsKey(C));
 
     _handlers[C] = handler;
@@ -82,27 +82,27 @@ class FluirActor {
   var _idle = true;
 }
 
-abstract class FluirActorHandlers {
-  void add<C extends LocalCommand>(FluirActorHandler<C> handler);
+abstract class HordaEntityHandlers {
+  void add<C extends LocalCommand>(HordaEntityHandler<C> handler);
 }
 
-abstract class ProxyActor extends ProxyWidget {
-  ProxyActor({super.key, required super.child});
+abstract class ProxyEntity extends ProxyWidget {
+  ProxyEntity({super.key, required super.child});
 
-  void initHandlers(FluirActorHandlers handlers);
+  void initHandlers(HordaEntityHandlers handlers);
 
   @override
   Element createElement() {
-    return _ProxyActorElement(this);
+    return _ProxyEntityElement(this);
   }
 }
 
-class _ProxyActorElement extends ProxyElement
+class _ProxyEntityElement extends ProxyElement
     with NotifiableElementMixin
-    implements FluirActorContext, FluirActorHandlers {
-  _ProxyActorElement(super.widget)
+    implements HordaEntityContext, HordaEntityHandlers {
+  _ProxyEntityElement(super.widget)
     : logger = Logger('Fluir.Actor.${widget.runtimeType}') {
-    _actor = FluirActor(name: widget.runtimeType.toString(), context: this);
+    _actor = HordaEntity(name: widget.runtimeType.toString(), context: this);
   }
 
   @override
@@ -112,7 +112,7 @@ class _ProxyActorElement extends ProxyElement
   void mount(Element? parent, Object? newSlot) {
     super.mount(parent, newSlot);
 
-    (widget as ProxyActor).initHandlers(this);
+    (widget as ProxyEntity).initHandlers(this);
     logger.fine('element mounted');
   }
 
@@ -143,29 +143,29 @@ class _ProxyActorElement extends ProxyElement
   void notifyClients(covariant ProxyWidget oldWidget) {}
 
   @override
-  void add<C extends LocalCommand>(FluirActorHandler<C> handler) {
+  void add<C extends LocalCommand>(HordaEntityHandler<C> handler) {
     _actor.addHandler<C>(handler);
   }
 
-  late FluirActor _actor;
+  late HordaEntity _actor;
 }
 
-abstract class WidgetActor extends StatefulWidget {
-  WidgetActor({super.key});
+abstract class WidgetEntity extends StatefulWidget {
+  WidgetEntity({super.key});
 }
 
-abstract class WidgetActorState<T extends WidgetActor> extends State<T>
-    implements FluirActorHandlers, FluirActorContext {
-  WidgetActorState() {
+abstract class WidgetEntityState<T extends WidgetEntity> extends State<T>
+    implements HordaEntityHandlers, HordaEntityContext {
+  WidgetEntityState() {
     logger = Logger('Fluir.Actor.$runtimeType');
-    _actor = FluirActor(name: runtimeType.toString(), context: this);
+    _actor = HordaEntity(name: runtimeType.toString(), context: this);
   }
 
   late final Logger logger;
 
-  FluirClientSystem get system => FluirSystemProvider.of(context);
+  HordaClientSystem get system => HordaSystemProvider.of(context);
 
-  void initHandlers(FluirActorHandlers handlers);
+  void initHandlers(HordaEntityHandlers handlers);
 
   @override
   void initState() {
@@ -182,7 +182,7 @@ abstract class WidgetActorState<T extends WidgetActor> extends State<T>
   }
 
   @override
-  void add<C extends LocalCommand>(FluirActorHandler<C> handler) {
+  void add<C extends LocalCommand>(HordaEntityHandler<C> handler) {
     _actor.addHandler<C>(handler);
   }
 
@@ -192,7 +192,7 @@ abstract class WidgetActorState<T extends WidgetActor> extends State<T>
 
   void _register() {
     context.visitAncestorElements((element) {
-      if (element is FluirFlowElement) {
+      if (element is HordaProcessElement) {
         element.register(_actor);
         _flow = element;
         return false;
@@ -211,6 +211,6 @@ abstract class WidgetActorState<T extends WidgetActor> extends State<T>
     _flow = null;
   }
 
-  late final FluirActor _actor;
-  FluirFlowElement? _flow;
+  late final HordaEntity _actor;
+  HordaProcessElement? _flow;
 }

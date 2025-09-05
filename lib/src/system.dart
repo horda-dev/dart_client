@@ -9,13 +9,13 @@ import 'provider.dart';
 
 part 'system.g.dart';
 
-class FluirClientSystem {
-  FluirClientSystem(
+class HordaClientSystem {
+  HordaClientSystem(
     this.connectionConfig,
     this.authProvider, {
     this.analyticsService,
     this.errorTrackingService,
-  }) : authState = ValueNotifier<FluirAuthState>(
+  }) : authState = ValueNotifier<HordaAuthState>(
          connectionConfig is IncognitoConfig
              ? AuthStateIncognito()
              : AuthStateValidating(),
@@ -39,7 +39,7 @@ class FluirClientSystem {
 
   late final Logger logger;
 
-  final ValueNotifier<FluirAuthState> authState;
+  final ValueNotifier<HordaAuthState> authState;
 
   void start() {
     logger.fine('starting client system...');
@@ -67,50 +67,50 @@ class FluirClientSystem {
     }
   }
 
-  void sendRemote(String actorName, EntityId workerId, RemoteCommand cmd) {
-    logger.fine('sending remote command $cmd to $workerId...');
+  void sendRemote(String entityName, EntityId entityId, RemoteCommand cmd) {
+    logger.fine('sending remote command $cmd to $entityId...');
     analyticsService?.reportMessage(
       cmd,
       SendCallLabels(
         senderId: _senderId,
-        actorId: workerId,
-        actorName: actorName,
+        entityId: entityId,
+        entityName: entityName,
       ),
     );
 
     try {
-      conn.send(actorName, workerId, cmd);
+      conn.send(entityName, entityId, cmd);
     } catch (e) {
-      logger.severe('send remote $cmd to $workerId failed with $e');
+      logger.severe('send remote $cmd to $entityId failed with $e');
       return;
     }
 
-    logger.info('sent remote $cmd to $workerId');
+    logger.info('sent remote $cmd to $entityId');
   }
 
   Future<RemoteEvent> callRemote(
-    String actorName,
-    EntityId workerId,
+    String entityName,
+    EntityId entityId,
     RemoteCommand cmd,
   ) async {
-    logger.fine('calling remote command $cmd to $workerId...');
+    logger.fine('calling remote command $cmd to $entityId...');
     analyticsService?.reportMessage(
       cmd,
       SendCallLabels(
         senderId: _senderId,
-        actorId: workerId,
-        actorName: actorName,
+        entityId: entityId,
+        entityName: entityName,
       ),
     );
 
     final res = await conn.call(
-      actorName,
-      workerId,
+      entityName,
+      entityId,
       cmd,
       const Duration(seconds: 10),
     );
 
-    logger.info('called command $cmd to $workerId');
+    logger.info('called command $cmd to $entityId');
 
     return res;
   }
@@ -133,11 +133,11 @@ class FluirClientSystem {
   }
 
   Future<QueryResult> query({
-    required String actorId,
+    required String entityId,
     required String name,
     required QueryDef def,
   }) {
-    return conn.query(actorId: actorId, name: name, def: def);
+    return conn.query(actorId: entityId, name: name, def: def);
   }
 
   Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
@@ -314,8 +314,8 @@ class FluirClientSystem {
   final _viewSubCount = <String, int>{};
 }
 
-class TestFluirClientSystem extends FluirClientSystem {
-  TestFluirClientSystem()
+class TestHordaClientSystem extends HordaClientSystem {
+  TestHordaClientSystem()
     : super(IncognitoConfig(url: '', apiKey: ''), TestAuthProvider());
 
   void start() {
@@ -347,13 +347,13 @@ abstract class MessageLabels {
 class SendCallLabels implements MessageLabels {
   SendCallLabels({
     required this.senderId,
-    required this.actorId,
-    required this.actorName,
+    required this.entityId,
+    required this.entityName,
   });
 
   final String senderId;
-  final String actorId;
-  final String actorName;
+  final String entityId;
+  final String entityName;
 
   @override
   Map<String, dynamic> toJson() {

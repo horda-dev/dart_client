@@ -1,3 +1,8 @@
+## 0.19.0
+
+ - **BREAKING CHANGE**: rename public API: Fluir->Horda, Actor->Entity, Flow->Process.
+ - Update horda_core dependency to 0.13.2.
+
 ## 0.18.0
 
  - **BREAKING CHANGE**: rename public API.

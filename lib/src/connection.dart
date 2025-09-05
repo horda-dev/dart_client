@@ -11,17 +11,17 @@ import 'package:web_socket_channel/io.dart';
 
 import 'system.dart';
 
-sealed class FluirConnectionState {}
+sealed class HordaConnectionState {}
 
-final class ConnectionStateDisconnected implements FluirConnectionState {}
+final class ConnectionStateDisconnected implements HordaConnectionState {}
 
-final class ConnectionStateConnecting implements FluirConnectionState {}
+final class ConnectionStateConnecting implements HordaConnectionState {}
 
-final class ConnectionStateConnected implements FluirConnectionState {}
+final class ConnectionStateConnected implements HordaConnectionState {}
 
-final class ConnectionStateReconnecting implements FluirConnectionState {}
+final class ConnectionStateReconnecting implements HordaConnectionState {}
 
-final class ConnectionStateReconnected implements FluirConnectionState {}
+final class ConnectionStateReconnected implements HordaConnectionState {}
 
 sealed class ConnectionConfig {
   ConnectionConfig({required this.url, required this.apiKey});
@@ -46,7 +46,7 @@ class LoggedInConfig extends ConnectionConfig {
   };
 }
 
-abstract class Connection implements ValueNotifier<FluirConnectionState> {
+abstract class Connection implements ValueNotifier<HordaConnectionState> {
   ConnectionConfig get config;
 
   void open();
@@ -77,7 +77,7 @@ abstract class Connection implements ValueNotifier<FluirConnectionState> {
   Future<void> unsubscribeViews(Iterable<ActorViewSub> subs);
 }
 
-final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
+final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     implements Connection {
   WebSocketConnection(this.system, ConnectionConfig config)
     : logger = Logger('Fluir.Connection'),
@@ -87,7 +87,7 @@ final class WebSocketConnection extends ValueNotifier<FluirConnectionState>
   @override
   ConnectionConfig get config => _config;
 
-  final FluirClientSystem system;
+  final HordaClientSystem system;
 
   final Logger logger;
 

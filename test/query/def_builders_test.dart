@@ -1,25 +1,25 @@
 import 'package:horda_client/horda_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class TestQuery extends ActorQuery {
-  final view1 = ActorValueView<String>('view1');
+class TestQuery extends EntityQuery {
+  final view1 = EntityValueView<String>('view1');
 
-  final view2 = ActorValueView<String>('view2');
+  final view2 = EntityValueView<String>('view2');
 
-  final ref = ActorRefView(
+  final ref = EntityRefView(
     'ref1',
     query: TestRefQuery(),
     attrs: ['attr1', 'attr2'],
   );
 
-  final list = ActorListView(
+  final list = EntityListView(
     'list1',
     query: TestListQuery(),
     attrs: ['attr3', 'attr4'],
   );
 
   @override
-  void initViews(ActorQueryGroup views) {
+  void initViews(EntityQueryGroup views) {
     views
       ..add(view1)
       ..add(view2)
@@ -28,26 +28,26 @@ class TestQuery extends ActorQuery {
   }
 }
 
-class TestRefQuery extends ActorQuery {
-  final view3 = ActorValueView<String>('view3');
+class TestRefQuery extends EntityQuery {
+  final view3 = EntityValueView<String>('view3');
 
-  final view4 = ActorValueView<String>('view4');
+  final view4 = EntityValueView<String>('view4');
 
   @override
-  void initViews(ActorQueryGroup group) {
+  void initViews(EntityQueryGroup group) {
     group
       ..add(view3)
       ..add(view4);
   }
 }
 
-class TestListQuery extends ActorQuery {
-  final view5 = ActorValueView<String>('view5');
+class TestListQuery extends EntityQuery {
+  final view5 = EntityValueView<String>('view5');
 
-  final view6 = ActorValueView<String>('view6');
+  final view6 = EntityValueView<String>('view6');
 
   @override
-  void initViews(ActorQueryGroup group) {
+  void initViews(EntityQueryGroup group) {
     group
       ..add(view5)
       ..add(view6);
