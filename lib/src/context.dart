@@ -7,6 +7,10 @@ import 'message.dart';
 import 'provider.dart';
 import 'query.dart';
 
+/// Extension providing authentication and connection state access for Flutter widgets.
+///
+/// Adds convenient methods to [BuildContext] for accessing Horda authentication
+/// and connection states, as well as logout functionality.
 extension HordaModelExtensions on BuildContext {
   void logout() {
     final system = HordaSystemProvider.of(this);
@@ -38,6 +42,10 @@ extension HordaModelExtensions on BuildContext {
   }
 }
 
+/// Extension for dispatching local messages within the Flutter app.
+///
+/// Provides methods to dispatch local messages that can be handled by
+/// notification listeners and analytics services.
 extension MessageExtensions on BuildContext {
   void dispatch(LocalMessage msg) {
     dispatchNotification(msg);
@@ -46,22 +54,44 @@ extension MessageExtensions on BuildContext {
   }
 }
 
+/// Selector function for accessing list views within entity queries.
+///
+/// Used to specify which [EntityListView] to access from a query.
 typedef ListSelector<Q extends EntityQuery> = EntityListView Function(Q q);
 
+/// Selector function for accessing reference views within entity queries.
+///
+/// Used to specify which [EntityRefView] to access from a parent query.
 typedef RefSelector<P extends EntityQuery, C extends EntityQuery> =
     EntityRefView<C> Function(P q);
 
+/// Selector function for accessing reference view IDs within entity queries.
+///
+/// Used to access the ID of a referenced entity without the full query data.
 typedef RefIdSelector<Q extends EntityQuery> = EntityRefView Function(Q q);
 
+/// Selector function for accessing value views within entity queries.
+///
+/// Used to specify which [EntityValueView] to access from a query.
 typedef ValueSelector<Q extends EntityQuery, T> =
     EntityValueView<T> Function(Q q);
 
+/// Selector function for accessing counter views within entity queries.
+///
+/// Used to specify which [EntityCounterView] to access from a query.
 typedef CounterSelector<Q extends EntityQuery> =
     EntityCounterView Function(Q q);
 
+/// Selector function for accessing individual items within list views.
+///
+/// Used to specify which list item to access from a list query.
 typedef ListItemSelector<L extends EntityQuery, I extends EntityQuery> =
     EntityListView<I> Function(L q);
 
+/// Extension providing entity query functionality for Flutter widgets.
+///
+/// Adds methods to [BuildContext] for running entity queries and accessing
+/// query results with automatic reactive updates.
 extension EntityViewQueryExtensions on BuildContext {
   EntityQueryProvider runEntityQuery({
     required EntityId entityId,
@@ -127,6 +157,11 @@ extension EntityViewQueryExtensions on BuildContext {
   }
 }
 
+/// Builder for accessing entity query data with automatic dependency tracking.
+///
+/// When you access query data through this builder, your widget automatically
+/// becomes dependent on the queried values and will rebuild when they change.
+/// This provides real-time UI updates with zero boilerplate code.
 class EntityQueryDependencyBuilder<Q extends EntityQuery> {
   EntityQueryDependencyBuilder._(this._builder);
 
@@ -265,8 +300,16 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
   }
 }
 
+/// Handler function for reacting to specific view changes.
+///
+/// Used with value change handlers when you need to execute custom code
+/// in response to data changes, such as triggering animations or logging.
 typedef ChangeHandler<C extends Change> = void Function(C change);
 
+/// Builder for setting up value change handlers on entity queries.
+///
+/// Allows you to register handlers that execute when specific value views
+/// change, useful for triggering animations or other reactive behavior.
 class EntityQueryValueHandlerBuilder<Q extends EntityQuery, T> {
   EntityQueryValueHandlerBuilder(this._builder, this._sel);
 
@@ -281,6 +324,10 @@ class EntityQueryValueHandlerBuilder<Q extends EntityQuery, T> {
   }
 }
 
+/// Builder for setting up reference change handlers on entity queries.
+///
+/// Allows you to register handlers that execute when reference views
+/// change their target entity.
 class EntityQueryRefHandlerBuilder<Q extends EntityQuery> {
   EntityQueryRefHandlerBuilder(this._builder, this._sel);
 
@@ -292,6 +339,10 @@ class EntityQueryRefHandlerBuilder<Q extends EntityQuery> {
   }
 }
 
+/// Builder for setting up counter change handlers on entity queries.
+///
+/// Allows you to register handlers for counter increment, decrement,
+/// and reset operations.
 class EntityQueryCounterHandlerBuilder<Q extends EntityQuery> {
   EntityQueryCounterHandlerBuilder(this._builder, this._sel);
 
@@ -311,6 +362,10 @@ class EntityQueryCounterHandlerBuilder<Q extends EntityQuery> {
   }
 }
 
+/// Builder for setting up list change handlers on entity queries.
+///
+/// Allows you to register handlers for list operations like item addition,
+/// removal, and clearing.
 class EntityQueryListHandlerBuilder<Q extends EntityQuery> {
   EntityQueryListHandlerBuilder(this._builder, this._sel);
 
@@ -334,6 +389,10 @@ class EntityQueryListHandlerBuilder<Q extends EntityQuery> {
   }
 }
 
+/// Builder for accessing potentially null entity query data.
+///
+/// Similar to [EntityQueryDependencyBuilder] but handles cases where
+/// the queried data might be null (e.g., optional references).
 class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
   MaybeEntityQueryDependencyBuilder._(this._builder);
 
@@ -385,6 +444,10 @@ class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
   }
 }
 
+/// Internal builder class for accessing query data with dependency tracking.
+///
+/// Handles the complex logic of navigating query paths, establishing
+/// dependencies, and retrieving data from entity view hosts.
 class _Builder<Q extends EntityQuery> {
   _Builder.root(
     this.queryType,
@@ -839,6 +902,18 @@ class _Builder<Q extends EntityQuery> {
 ///
 /// In case an [ActorViewHost] is stopped while this [ChangeHandlerState] still exists,
 /// the host will call [removeHost]. So the stopped host is no longer referred to.
+/// State mixin that automatically manages change handler lifecycle.
+///
+/// Mix this into your stateful widget states when using change handlers.
+/// It ensures handlers are properly cleaned up when the widget is disposed.
+///
+/// Example:
+/// ```dart
+/// class _MyWidgetState extends State<MyWidget> 
+///     with ChangeHandlerState<MyWidget> {
+///   // Your widget implementation
+/// }
+/// ```
 mixin ChangeHandlerState<T extends StatefulWidget> on State<T> {
   @override
   void dispose() {
@@ -867,6 +942,11 @@ mixin ChangeHandlerState<T extends StatefulWidget> on State<T> {
 ///
 /// Anonymous function could be used instead, but we won't be able to check if the handler
 /// was already added.
+/// Wrapper for [ValueViewChanged] handlers with proper type safety.
+///
+/// Ensures that value change handlers receive correctly typed change events.
+/// This wrapper is used internally to maintain type safety when registering
+/// change handlers.
 class ValueViewChangedHandler<T> {
   ValueViewChangedHandler(this.handler);
 

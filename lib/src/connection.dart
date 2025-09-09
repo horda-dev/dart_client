@@ -11,31 +11,82 @@ import 'package:web_socket_channel/io.dart';
 
 import 'system.dart';
 
+/// Represents the current state of the WebSocket connection to the Horda backend.
+///
+/// The SDK automatically manages connection states and handles reconnection
+/// in case of lost connectivity. Use `context.hordaConnectionState` to access
+/// the current connection state in your widgets.
 sealed class HordaConnectionState {}
 
+/// Connection is closed and not attempting to reconnect.
+///
+/// This state occurs when the connection is manually closed or when
+/// the initial connection attempt has not yet been made.
 final class ConnectionStateDisconnected implements HordaConnectionState {}
 
+/// Initial connection attempt is in progress.
+///
+/// This is the first connection attempt when the system starts up.
 final class ConnectionStateConnecting implements HordaConnectionState {}
 
+/// Successfully connected to the Horda backend.
+///
+/// The WebSocket connection is established and ready to send/receive data.
 final class ConnectionStateConnected implements HordaConnectionState {}
 
+/// Attempting to reconnect after a connection loss.
+///
+/// The connection was previously established but was lost due to network
+/// issues or server problems. The SDK is attempting to reconnect.
 final class ConnectionStateReconnecting implements HordaConnectionState {}
 
+/// Successfully reconnected after a connection loss.
+///
+/// The connection has been restored and is ready to resume normal operation.
 final class ConnectionStateReconnected implements HordaConnectionState {}
 
+/// Base configuration for connecting to the Horda backend.
+///
+/// Contains the WebSocket URL and API key required for authentication.
+/// Use [IncognitoConfig] for unauthenticated connections or [LoggedInConfig]
+/// for authenticated connections with JWT tokens.
 sealed class ConnectionConfig {
   ConnectionConfig({required this.url, required this.apiKey});
 
+  /// WebSocket URL for the Horda backend in format: wss://api.horda.ai/[PROJECT_ID]/client
   final String url;
+  
+  /// API key for your Horda project
   final String apiKey;
 
+  /// HTTP headers sent with the WebSocket connection
   Map<String, dynamic> get httpHeaders => {'apiKey': apiKey};
 }
 
+/// Configuration for unauthenticated connections to the Horda backend.
+///
+/// Use this configuration when your app doesn't require user authentication.
+/// This is the default connection type used with [NoAuth] authentication provider.
+///
+/// Example:
+/// ```dart
+/// final conn = IncognitoConfig(url: url, apiKey: apiKey);
+/// final system = HordaClientSystem(conn, NoAuth());
+/// ```
 class IncognitoConfig extends ConnectionConfig {
   IncognitoConfig({required super.url, required super.apiKey});
 }
 
+/// Configuration for authenticated connections to the Horda backend.
+///
+/// Use this configuration when your app requires user authentication with JWT tokens.
+/// Must be used with a custom [AuthProvider] implementation that provides JWT tokens.
+///
+/// Example:
+/// ```dart
+/// final conn = LoggedInConfig(url: url, apiKey: apiKey);
+/// final system = HordaClientSystem(conn, MyAuthProvider());
+/// ```
 class LoggedInConfig extends ConnectionConfig {
   LoggedInConfig({required super.url, required super.apiKey});
 
@@ -46,23 +97,48 @@ class LoggedInConfig extends ConnectionConfig {
   };
 }
 
+/// Abstract interface for managing WebSocket connections to the Horda backend.
+///
+/// Handles all communication with the server including queries, commands, events,
+/// and view subscriptions. The connection automatically manages reconnection and
+/// provides real-time updates through WebSocket.
 abstract class Connection implements ValueNotifier<HordaConnectionState> {
+  /// Current connection configuration
   ConnectionConfig get config;
 
+  /// Opens the WebSocket connection to the backend
   void open();
 
+  /// Closes the WebSocket connection
   void close();
 
+  /// Reopens the connection with a new configuration
   void reopen(ConnectionConfig config);
 
+  /// Executes a query against an entity's views
+  ///
+  /// [actorId] - ID of the entity to query
+  /// [name] - Name of the query
+  /// [def] - Query definition specifying which views to retrieve
   Future<QueryResult> query({
     required String actorId,
     required String name,
     required QueryDef def,
   });
 
+  /// Sends a command to an entity without waiting for response
+  ///
+  /// [actorName] - Entity type name
+  /// [to] - Target entity ID
+  /// [cmd] - Command to send
   Future<void> send(String actorName, EntityId to, RemoteCommand cmd);
 
+  /// Calls a command on an entity and waits for the response
+  ///
+  /// [actorName] - Entity type name
+  /// [to] - Target entity ID
+  /// [cmd] - Command to send
+  /// [timeout] - Maximum time to wait for response
   Future<RemoteEvent> call(
     String actorName,
     EntityId to,
@@ -70,13 +146,30 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
     Duration timeout,
   );
 
+  /// Dispatches an event to trigger backend business processes
+  ///
+  /// [event] - Event to dispatch
+  /// [timeout] - Maximum time to wait for completion
   Future<FlowResult> dispatchEvent(RemoteEvent event, Duration timeout);
 
+  /// Subscribes to real-time updates for entity views
+  ///
+  /// [subs] - View subscriptions to establish
   Future<void> subscribeViews(Iterable<ActorViewSub> subs);
 
+  /// Unsubscribes from real-time updates for entity views
+  ///
+  /// [subs] - View subscriptions to remove
   Future<void> unsubscribeViews(Iterable<ActorViewSub> subs);
 }
 
+/// WebSocket implementation of the [Connection] interface.
+///
+/// Manages the actual WebSocket connection to the Horda backend with features like:
+/// - Automatic reconnection with exponential backoff
+/// - Message queuing during disconnection
+/// - Real-time communication for queries, commands, and events
+/// - View subscription management for live data updates
 final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     implements Connection {
   WebSocketConnection(this.system, ConnectionConfig config)

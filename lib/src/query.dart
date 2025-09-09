@@ -12,6 +12,24 @@ import 'devtool.dart';
 import 'provider.dart';
 import 'system.dart';
 
+/// Base class for defining entity queries in the Horda Client SDK.
+///
+/// Entity queries define which views to retrieve from entities on the backend.
+/// They map directly to EntityViewGroups defined on the server, creating a
+/// strongly-typed contract between your Flutter app and backend.
+///
+/// Example:
+/// ```dart
+/// class CounterQuery extends EntityQuery {
+///   final counterName = EntityValueView<String>('name');
+///   final counterValue = EntityCounterView('value');
+///
+///   @override
+///   void initViews(EntityQueryGroup views) {
+///     views..add(counterName)..add(counterValue);
+///   }
+/// }
+/// ```
 abstract class EntityQuery implements EntityQueryGroup {
   EntityQuery() {
     initViews(this);
@@ -53,15 +71,28 @@ abstract class EntityQuery implements EntityQueryGroup {
   final _views = <String, EntityView>{};
 }
 
+/// Empty query implementation that retrieves no views.
+///
+/// Used as a placeholder when you need a query but don't want to
+/// retrieve any specific data from the entity.
 class EmptyQuery extends EntityQuery {
   @override
   void initViews(EntityQueryGroup views) {}
 }
 
+/// Function type for converting raw view values to typed values.
+///
+/// Used internally by entity views to transform data received from
+/// the backend into the expected Dart types.
 typedef ViewConvertFunc = dynamic Function(dynamic val);
 
 dynamic _identity(dynamic val) => val;
 
+/// Base class for all entity view types.
+///
+/// Entity views represent specific data fields that can be queried from
+/// entities. Each view type (value, counter, reference, list) provides
+/// different capabilities for data access and real-time updates.
 abstract class EntityView {
   EntityView(
     this.name, {
@@ -87,8 +118,22 @@ abstract class EntityView {
   );
 }
 
+/// Function type for converting raw values to specific types.
+///
+/// Used by [EntityValueView] to ensure type safety when converting
+/// backend data to the expected Dart type.
 typedef ValueViewConvertFunc<T> = T? Function(dynamic val);
 
+/// View for accessing single typed values from entities.
+///
+/// Use this view type to retrieve simple data fields like strings, numbers,
+/// booleans, or other single values from entity state.
+///
+/// Example:
+/// ```dart
+/// final counterName = EntityValueView<String>('name');
+/// final isActive = EntityValueView<bool>('active');
+/// ```
 class EntityValueView<T> extends EntityView {
   EntityValueView(
     super.name, {
@@ -121,6 +166,15 @@ T _defaultValueConvert<T>(String viewName, dynamic val) {
   return val;
 }
 
+/// Specialized view for accessing DateTime values from entities.
+///
+/// Automatically handles conversion from millisecond timestamps to
+/// DateTime objects with proper UTC/local timezone handling.
+///
+/// Example:
+/// ```dart
+/// final createdAt = EntityDateTimeView('createdAt', isUtc: true);
+/// ```
 class EntityDateTimeView extends EntityValueView<DateTime> {
   EntityDateTimeView(
     super.name, {
@@ -153,6 +207,15 @@ DateTime? dateTimeConvert(
   return DateTime.fromMillisecondsSinceEpoch(val, isUtc: isUtc);
 }
 
+/// View for accessing counter values that support increment/decrement operations.
+///
+/// Counter views maintain integer values that can be incremented, decremented,
+/// or reset. They provide real-time updates when the counter value changes.
+///
+/// Example:
+/// ```dart
+/// final likeCount = EntityCounterView('likes');
+/// ```
 class EntityCounterView<T> extends EntityView {
   EntityCounterView(super.name, {super.subscribe, super.nullable});
 
@@ -171,6 +234,19 @@ class EntityCounterView<T> extends EntityView {
   }
 }
 
+/// View for accessing references to other entities.
+///
+/// Reference views allow you to query related entities by following
+/// entity relationships. The referenced entity can be queried using
+/// the provided query definition.
+///
+/// Example:
+/// ```dart
+/// final userProfile = EntityRefView<ProfileQuery>(
+///   'profile',
+///   query: ProfileQuery(),
+/// );
+/// ```
 class EntityRefView<S extends EntityQuery> extends EntityView {
   EntityRefView(
     super.name, {
@@ -205,6 +281,16 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
   }
 }
 
+/// View for accessing lists of related entities.
+///
+/// List views allow you to query collections of related entities,
+/// with each item in the list queried using the provided query definition.
+/// Supports real-time updates for list operations (add, remove, clear).
+///
+/// Example:
+/// ```dart
+/// final userFriends = EntityListView('friends', query: UserQuery());
+/// ```
 class EntityListView<S extends EntityQuery> extends EntityView {
   EntityListView(
     String name, {
@@ -239,6 +325,13 @@ class EntityListView<S extends EntityQuery> extends EntityView {
   }
 }
 
+/// Host for managing entity query execution and state.
+///
+/// Manages the lifecycle of entity queries including:
+/// - Running queries against entities
+/// - Managing view subscriptions for real-time updates
+/// - Tracking query state (created, loaded, error, stopped)
+/// - Coordinating with child view hosts
 class ActorQueryHost {
   ActorQueryHost(
     String parentLoggerName,
@@ -483,12 +576,29 @@ class ActorQueryHost {
   bool _isStopped = false;
 }
 
+/// States that an entity query can be in during its lifecycle.
+///
+/// - [created]: Query has been initialized but not yet executed
+/// - [loaded]: Query has completed successfully and data is available
+/// - [error]: Query execution failed
+/// - [stopped]: Query has been terminated and cleaned up
 enum EntityQueryState { created, loaded, error, stopped }
 
+/// Interface for collecting entity views in a query.
+///
+/// Used by [EntityQuery.initViews] to register the views that
+/// should be retrieved from entities.
 abstract class EntityQueryGroup {
   void add(EntityView view);
 }
 
+/// Base class for hosting entity view data and managing real-time updates.
+///
+/// View hosts handle:
+/// - Receiving initial data from query results
+/// - Subscribing to real-time view changes
+/// - Projecting changes to update local state
+/// - Managing child queries for complex views
 abstract class ActorViewHost {
   ActorViewHost(this.parentLoggerName, this.parent, this.view, this.system)
     : logger = Logger('$parentLoggerName.${view.name}') {
@@ -850,6 +960,10 @@ abstract class ActorViewHost {
   final _changeHandlersByState = <ChangeHandlerState, Set>{};
 }
 
+/// Host for managing value view data and updates.
+///
+/// Handles simple value views that contain single typed values.
+/// Receives value change events and updates the local value accordingly.
 class ActorValueViewHost<T> extends ActorViewHost {
   ActorValueViewHost(
     super.parentLoggerName,
@@ -903,6 +1017,10 @@ class ActorValueViewHost<T> extends ActorViewHost {
   }
 }
 
+/// Host for managing counter view data and updates.
+///
+/// Handles counter views that support increment, decrement, and reset
+/// operations. Maintains the current counter value and applies changes.
 class ActorCounterViewHost extends ActorViewHost {
   ActorCounterViewHost(
     super.parentLoggerName,
@@ -964,6 +1082,12 @@ class ActorCounterViewHost extends ActorViewHost {
   }
 }
 
+/// Host for managing reference view data and updates.
+///
+/// Handles reference views that point to other entities. Manages:
+/// - Reference ID changes
+/// - Child query execution for referenced entities
+/// - Attribute management for the reference
 class ActorRefViewHost extends ActorViewHost {
   ActorRefViewHost(
     super.parentLoggerName,
@@ -1151,6 +1275,12 @@ class ActorRefViewHost extends ActorViewHost {
   late final AttributesHost _attrHost;
 }
 
+/// Host for managing list view data and updates.
+///
+/// Handles list views containing multiple related entities. Manages:
+/// - List item addition, removal, and reordering
+/// - Child queries for each list item
+/// - Attributes for individual list items
 class ActorListViewHost extends ActorViewHost {
   ActorListViewHost(
     super.parentLoggerName,
@@ -1530,6 +1660,10 @@ class ActorListViewHost extends ActorViewHost {
   final _attrHosts = <EntityId, AttributesHost>{};
 }
 
+/// Base class for inherited widgets that notify dependents of model changes.
+///
+/// Provides selective notification based on aspects, allowing widgets to
+/// depend on specific parts of a model and only rebuild when those parts change.
 abstract class InheritedModelNotifier<T> extends InheritedWidget {
   InheritedModelNotifier({super.key, required super.child});
 
@@ -1598,6 +1732,10 @@ abstract class InheritedModelNotifier<T> extends InheritedWidget {
   }
 }
 
+/// Element for the Horda system provider that handles reconnection logic.
+///
+/// Manages reconnection events and ensures that all query providers
+/// are properly restarted when the connection is reestablished.
 class FluirSystemProviderElement
     extends InheritedModelNotifierElement<HordaModelAspect> {
   FluirSystemProviderElement(HordaSystemProvider widget)
@@ -1631,6 +1769,10 @@ class FluirSystemProviderElement
   }
 }
 
+/// Element implementation for [InheritedModelNotifier] widgets.
+///
+/// Handles dependency tracking and selective notification based on
+/// model aspects that widgets depend on.
 class InheritedModelNotifierElement<T> extends InheritedElement {
   InheritedModelNotifierElement(InheritedModelNotifier<T> widget)
     : super(widget) {
@@ -1721,6 +1863,10 @@ class InheritedModelNotifierElement<T> extends InheritedElement {
   bool _dirty = false;
 }
 
+/// Element for entity query providers that manages query lifecycle.
+///
+/// Handles query execution, dependency tracking, and cleanup when
+/// the provider is unmounted.
 class ActorQueryProviderElement
     extends InheritedModelNotifierElement<ActorQueryPath> {
   ActorQueryProviderElement(super.widget, this.query, HordaClientSystem system)
@@ -1778,8 +1924,25 @@ class ActorQueryProviderElement
   bool _unmounted = false;
 }
 
+/// Function type for handling query path changes.
+///
+/// Used internally for notifying widgets when specific query paths change.
 typedef ActorQueryPathFunc = void Function(ActorQueryPath path);
 
+/// Provider widget that runs entity queries and provides results to child widgets.
+///
+/// Manages the execution of entity queries and provides reactive access to
+/// query results. Child widgets can access query data using `context.query<T>()`
+/// and will automatically rebuild when the data changes.
+///
+/// Example:
+/// ```dart
+/// EntityQueryProvider(
+///   entityId: 'user-123',
+///   query: UserQuery(),
+///   child: UserWidget(),
+/// )
+/// ```
 class EntityQueryProvider extends InheritedModelNotifier<ActorQueryPath> {
   EntityQueryProvider({
     required this.entityId,
@@ -1839,6 +2002,10 @@ extension ActorQueryProviderName on ActorQueryHost {
   ValueKey<String> get key => ValueKey('$actorId/${query.name}');
 }
 
+/// Notifier that tracks a set of items and notifies listeners when items are added.
+///
+/// Used internally for tracking changes to query aspects and notifying
+/// dependent widgets when specific aspects change.
 class SetNotifier<T> extends ChangeNotifier {
   Set<T> get set => Set<T>.unmodifiable(_set);
 
@@ -1854,6 +2021,11 @@ class SetNotifier<T> extends ChangeNotifier {
   final _set = HashSet<T>();
 }
 
+/// Represents a path to a specific view or state within an entity query.
+///
+/// Query paths are used for dependency tracking, allowing widgets to
+/// depend on specific parts of query results and rebuild only when
+/// those specific parts change.
 class ActorQueryPath {
   ActorQueryPath._(List<String> views) : _views = views;
 
@@ -1907,6 +2079,12 @@ class ActorQueryPath {
   final List<String> _views;
 }
 
+/// Host for managing entity reference and list item attributes.
+///
+/// Handles attribute data for references and list items, including:
+/// - Subscribing to attribute changes
+/// - Projecting attribute updates
+/// - Managing attribute lifecycle
 class AttributesHost {
   AttributesHost(
     this.parentLoggerName,
