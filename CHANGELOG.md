@@ -1,3 +1,8 @@
+## 0.19.1
+
+ - **DOCS**: add README.md
+ - **DOCS**: add doc comments to the main public APIs
+
 ## 0.19.0
 
  - **BREAKING CHANGE**: rename public API: Fluir->Horda, Actor->Entity, Flow->Process.

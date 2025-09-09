@@ -136,7 +136,7 @@ context.logout();
 
 ## Creating Queries
 
-Client queries interact with **Entity View Groups** defined on your Horda backend. When you define an entity on the server (using [Horda Server SDK](../dart_server/README.md#views)), you create view groups that expose read-optimized data representations. Client queries map directly to these backend views, creating a strongly-typed contract between your Flutter app and backend.
+Client queries interact with **Entity View Groups** defined on your Horda backend. When you define an entity on the server (using [Horda Server SDK](https://github.com/horda-ai/dart_server#views), you create view groups that expose public entity representations. Client queries map directly to these backend entity views, creating a strongly-typed contract between your Flutter app and backend.
 
 The query API provides **full type safety** with all the benefits of Dart's strong typing system:
 - Compile-time error checking for view names and types
@@ -150,8 +150,11 @@ Define query classes to specify which data you need from entities:
 
 ```dart
 class CounterQuery extends EntityQuery {
+  // get Counter entity 'name' string view
   final counterName = EntityValueView<String>('name');
+  // get Counter entity 'value' counter view
   final counterValue = EntityCounterView('value');
+  // get Counter entity 'value' string view
   final freezeStatus = EntityValueView<String>('freezeStatus');
 
   @override
@@ -170,19 +173,42 @@ Entities can reference other entities, forming an **entity relationship graph**.
 
 This eliminates the need for multiple round-trips and allows you to declaratively specify exactly what data your UI needs, whether it's a single entity or a complex network of related data spanning multiple entity types.
 
+Any server-side changes to any views included in the entity graph query automatically flow to your Flutter UI in real-time, no matter how deep or intricate your query structure.
+
 #### Reference Views (single entity)
 ```dart
 class UserQuery extends EntityQuery {
+  // query all Profile entity views defined by ProfileQuery class
   final profile = EntityRefView<ProfileQuery>(
     'profile',
     query: ProfileQuery(),
   );
 
+  // query User entity 'name' string view
+  final name = EntityValueView<String>('name');
+
   @override
   void initViews(EntityQueryGroup views) {
-    views.add(profile);
+    views
+      ..add(profile)
+      ..add(name);
   }
 }
+
+class ProfileQuery extends EntityQuery {
+  // get Profile entity 'address' string view
+  final address = EntityValueView<String>('address');
+  // get Profile entity 'zipCode' counter view
+  final zipCode = EntityValueView<String>('zipCode');
+
+  @override
+  void initViews(EntityQueryGroup views) {
+    views
+      ..add(address)
+      ..add(zipCode);
+  }
+}
+
 ```
 
 #### List Views (multiple entities)

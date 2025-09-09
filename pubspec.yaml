@@ -1,6 +1,6 @@
 name: horda_client
-description: Client SDK for Horda stateful serverless backend
-version: 0.19.0
+description: Connect your Flutter app to backends built with the Horda platform.
+version: 0.19.1
 homepage: https://github.com/horda-ai/dart_client
 
 environment:
