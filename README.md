@@ -2,20 +2,30 @@
 
 Horda Client SDK connects your Flutter app to your app's backend running on Horda platform.
 
-## Table of Content
-- [Connection management](#connection-management)
+## Table of Contents
+- [Connection Management](#connection-management)
+  - [Setup Connection](#setup-connection)
+  - [Connection States](#connection-states)
 - [Authentication](#authentication)
-- [Creating Queries to query entity's views](#creating-queries-to-query-entitys-views)
-    - [create root query class](#create-root-query-class)
-    - [query related entities](#query-related-entities)
+  - [Setup Authenticated Connection](#setup-authenticated-connection)
+  - [Authentication States](#authentication-states)
+- [Creating Queries](#creating-queries)
+  - [Root Query Classes](#root-query-classes)
+  - [Entity Graphs](#entity-graphs)
 - [Running Queries](#running-queries)
-    - [add query widget](#add-query-widget)
-    - [query state](#query-state)
-- [Getting query results and updating app data in real-time](#getting-query-results-and-updating-app-data-in-real-time)
-- [Starting backend business processes and getting results](#starting-backend-business-processes-and-getting-results)
-    - [add backend pkg dep to pubspec.yaml](#add-backend-pkg-dep-to-pubspecyaml)
+  - [Query Widgets](#query-widgets)
+  - [Query State](#query-state)
+- [Real-time Data Access](#real-time-data-access)
+  - [Access Query Data](#access-query-data)
+  - [Working with References](#working-with-references)
+  - [Working with Lists](#working-with-lists)
+  - [Value Change Handlers](#value-change-handlers)
+- [Backend Integration](#backend-integration)
+  - [Dispatch Events](#dispatch-events)
+  - [Send Commands](#send-commands)
+  - [Backend Package Setup](#backend-package-setup)
 
-## Connection management
+## Connection Management
 
 ### Setup Connection
 
@@ -124,7 +134,7 @@ final userId = context.hordaAuthUserId;
 context.logout();
 ```
 
-## Creating Queries to query entity's views
+## Creating Queries
 
 Client queries interact with **Entity View Groups** defined on your Horda backend. When you define an entity on the server (using [Horda Server SDK](../dart_server/README.md#views)), you create view groups that expose read-optimized data representations. Client queries map directly to these backend views, creating a strongly-typed contract between your Flutter app and backend.
 
@@ -134,7 +144,7 @@ The query API provides **full type safety** with all the benefits of Dart's stro
 - Runtime type safety preventing data access errors
 - Clear documentation through type definitions
 
-### Create root query class
+### Root Query Classes
 
 Define query classes to specify which data you need from entities:
 
@@ -154,7 +164,7 @@ class CounterQuery extends EntityQuery {
 }
 ```
 
-### Query related entities (entity graphs)
+### Entity Graphs
 
 Entities can reference other entities, forming an **entity relationship graph**. For example, a User might reference a Profile entity, which in turn references Address entities. With Horda Client queries, you can fetch arbitrary complex subgraphs of related entities in a single query.
 
@@ -198,7 +208,7 @@ More view types coming soon.
 
 ## Running Queries
 
-### Add query widget
+### Query Widgets
 
 Use `entityQuery` to run queries and handle loading/error states:
 
@@ -214,7 +224,7 @@ Widget build(BuildContext context) {
 }
 ```
 
-### Query state
+### Query State
 
 Monitor query execution state:
 
@@ -231,7 +241,7 @@ Widget build(BuildContext context) {
 }
 ```
 
-## Getting query results and updating app data in real-time
+## Real-time Data Access
 
 ### Access Query Data
 
@@ -328,7 +338,7 @@ class _CounterWidgetState extends State<CounterWidget>
 }
 ```
 
-## Starting backend business processes and getting results
+## Backend Integration
 
 ### Dispatch Events
 
@@ -379,7 +389,7 @@ final response = await system.callRemote(
 );
 ```
 
-### Add backend pkg dep to pubspec.yaml
+### Backend Package Setup
 
 Add your backend package to access event and command definitions:
 
