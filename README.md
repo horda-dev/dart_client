@@ -1,6 +1,6 @@
 # Horda Client SDK for Flutter
 
-Horda Client SDK connects your Flutter app to your app's backend running on Horda platform.
+Connect your Flutter app to backends built with the Horda platform.
 
 ## Table of Contents
 - [Connection Management](#connection-management)
