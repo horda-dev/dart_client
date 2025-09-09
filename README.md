@@ -101,6 +101,8 @@ context.logout();
 
 ## Creating Queries to query entity's views
 
+// todo: add an explanation that client queries entity's views that are defined on the backend with entity view group. add a link to horda_server readme section that explains views.
+
 // todo: add an explanation that query api is a strongly typed dart code with all benefits of strong typing
 
 ### Create root query class
