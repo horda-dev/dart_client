@@ -176,6 +176,7 @@ This eliminates the need for multiple round-trips and allows you to declarativel
 Any server-side changes to any views included in the entity graph query automatically flow to your Flutter UI in real-time, no matter how deep or intricate your query structure.
 
 #### Reference Views (single entity)
+
 ```dart
 class UserQuery extends EntityQuery {
   // query all Profile entity views defined by ProfileQuery class
@@ -213,14 +214,31 @@ class ProfileQuery extends EntityQuery {
 
 #### List Views (multiple entities)
 ```dart
-class CounterListQuery extends EntityQuery {
-  final counters = EntityListView('counters', query: CounterQuery());
+class UserFriendsQuery extends EntityQuery {
+  // get all User entity views that referred in 'friends' list
+  // and defined by FriendsQuery class
+  final friends = EntityListView('friends', query: FriendsQuery());
 
   @override
   void initViews(EntityQueryGroup views) {
-    views.add(counters);
+    views.add(friends);
   }
 }
+
+class FriendsQuery extends EntityQuery {
+  // get friend User entity 'firstName' string view
+  final firstName = EntityValueView<String>('firstName');
+  // get friend User entity 'lastName' counter view
+  final lastName = EntityValueView<String>('lastName');
+
+  @override
+  void initViews(EntityQueryGroup views) {
+    views
+      ..add(firstName)
+      ..add(lastName);
+  }
+}
+
 ```
 
 #### Available View Types
