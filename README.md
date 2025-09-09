@@ -65,9 +65,34 @@ Widget build(BuildContext context) {
 
 ### Setup Authenticated Connection
 
-// todo: add instruction on how to setup auth connection with JWT token
+For applications requiring user authentication, use `LoggedInConfig` with a JWT token provider:
 
-By default Horda client opened unauthenticated connection. Follow the instruction above to add an auth info to horda client.
+```dart
+import 'package:horda_client/horda_client.dart';
+
+class MyAuthProvider implements AuthProvider {
+  @override
+  Future<String?> getIdToken() async {
+    // Retrieve JWT token from your authentication service
+    // This could be Firebase Auth, Auth0, or your custom JWT provider
+    final token = await getCurrentUserJwtToken();
+    return token;
+  }
+}
+
+// Configure authenticated connection
+final projectId = '[YOUR_PROJECT_ID]';
+final apiKey = '[YOUR_API_KEY]';
+final url = 'wss://api.horda.ai/$projectId/client';
+
+final conn = LoggedInConfig(url: url, apiKey: apiKey);
+final system = HordaClientSystem(conn, MyAuthProvider());
+system.start();
+
+runApp(HordaSystemProvider(system: system, child: MyApp()));
+```
+
+By default, Horda Client opens an unauthenticated connection using `NoAuthConfig`. Use `LoggedInConfig` when your backend requires user authentication and authorization.
 
 ### Authentication States
 
@@ -101,9 +126,13 @@ context.logout();
 
 ## Creating Queries to query entity's views
 
-// todo: add an explanation that client queries entity's views that are defined on the backend with entity view group. add a link to horda_server readme section that explains views.
+Client queries interact with **Entity View Groups** defined on your Horda backend. When you define an entity on the server (using [Horda Server SDK](../dart_server/README.md#views)), you create view groups that expose read-optimized data representations. Client queries map directly to these backend views, creating a strongly-typed contract between your Flutter app and backend.
 
-// todo: add an explanation that query api is a strongly typed dart code with all benefits of strong typing
+The query API provides **full type safety** with all the benefits of Dart's strong typing system:
+- Compile-time error checking for view names and types
+- IDE auto-completion and refactoring support  
+- Runtime type safety preventing data access errors
+- Clear documentation through type definitions
 
 ### Create root query class
 
@@ -127,7 +156,9 @@ class CounterQuery extends EntityQuery {
 
 ### Query related entities (entity graphs)
 
-// todo: add an explanation of what related entities are, that they form a graph and you can create arbitary complex query that query a subgraph you want.
+Entities can reference other entities, forming an **entity relationship graph**. For example, a User might reference a Profile entity, which in turn references Address entities. With Horda Client queries, you can fetch arbitrary complex subgraphs of related entities in a single query.
+
+This eliminates the need for multiple round-trips and allows you to declaratively specify exactly what data your UI needs, whether it's a single entity or a complex network of related data spanning multiple entity types.
 
 #### Reference Views (single entity)
 ```dart
@@ -204,7 +235,9 @@ Widget build(BuildContext context) {
 
 ### Access Query Data
 
-// todo: add a explanation that getting query data inside a specific widget creates a dependency between this weedget and query view value and it gets the widget autoupdated every time the view's value gets updated. No extra setup is needed.
+When you access query data inside a widget using `context.query<T>()`, you automatically create a **reactive dependency** between that widget and the queried view values. The widget will be rebuilt every time the view's value changes on the backend - **no additional setup required**.
+
+This provides real-time UI updates with zero boilerplate code. As soon as your backend entities change (through business processes), your Flutter UI automatically reflects those changes.
 
 ```dart
 class CounterWidget extends StatelessWidget {
@@ -231,13 +264,16 @@ class CounterWidget extends StatelessWidget {
 
 ### Working with References
 
-// todo: add a maybeRef api example
-
 ```dart
-// Access referenced entity data
-final profileQuery = userQuery.ref((q) => q.profile);
-final profileName = profileQuery.value((q) => q.name);
+// Access referenced entity data (when reference is guaranteed to exist)
+final profileName = userQuery
+                      .ref((q) => q.profile)
+                      .value((q) => q.name);
 
+// Access optional references that might be null
+final nullableProfileName = userQuery
+                              .maybeRef((q) => q.profile)
+                              .value((q) => q.name);
 ```
 
 ### Working with Lists
@@ -254,7 +290,9 @@ final firstName = firstCounter.value((q) => q.counterName);
 
 ### Value Change Handlers
 
-// todo: add an explanation that this is api is designed for cases when you need to run a custom code when the values gets changed, for example to run Flutter animation. In all other cases real-time updates are work out of the box.
+Value change handlers are designed for cases where you need to execute **custom code** when specific values change, such as triggering Flutter animations, showing notifications, or logging events. For normal UI updates, the automatic real-time updates work out of the box without any additional setup.
+
+Use change handlers when you need programmatic reactions to data changes rather than just UI rebuilds:
 
 Listen to specific view changes for reactive updates:
 
