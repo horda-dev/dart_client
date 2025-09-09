@@ -909,7 +909,7 @@ class _Builder<Q extends EntityQuery> {
 ///
 /// Example:
 /// ```dart
-/// class _MyWidgetState extends State<MyWidget> 
+/// class _MyWidgetState extends State<MyWidget>
 ///     with ChangeHandlerState<MyWidget> {
 ///   // Your widget implementation
 /// }

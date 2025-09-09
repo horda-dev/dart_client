@@ -55,7 +55,7 @@ sealed class ConnectionConfig {
 
   /// WebSocket URL for the Horda backend in format: wss://api.horda.ai/[PROJECT_ID]/client
   final String url;
-  
+
   /// API key for your Horda project
   final String apiKey;
 
