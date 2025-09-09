@@ -9,6 +9,23 @@ import 'provider.dart';
 
 part 'system.g.dart';
 
+/// Main client system for managing connection and communication with Horda backend.
+///
+/// The client system handles:
+/// - WebSocket connection management
+/// - Authentication state management
+/// - Entity queries and real-time subscriptions
+/// - Command dispatch and event handling
+/// - Message storage and change history
+///
+/// Example:
+/// ```dart
+/// final system = HordaClientSystem(
+///   IncognitoConfig(url: url, apiKey: apiKey),
+///   NoAuth(),
+/// );
+/// system.start();
+/// ```
 class HordaClientSystem {
   HordaClientSystem(
     this.connectionConfig,
@@ -314,6 +331,10 @@ class HordaClientSystem {
   final _viewSubCount = <String, int>{};
 }
 
+/// Test implementation of [HordaClientSystem] for unit testing.
+///
+/// Provides a no-op implementation that doesn't establish real connections,
+/// useful for testing components that depend on the client system.
 class TestHordaClientSystem extends HordaClientSystem {
   TestHordaClientSystem()
     : super(IncognitoConfig(url: '', apiKey: ''), TestAuthProvider());
@@ -327,22 +348,50 @@ class TestHordaClientSystem extends HordaClientSystem {
   }
 }
 
+/// Provider interface for authentication tokens.
+///
+/// Implement this interface to provide JWT tokens for authenticated
+/// connections to the Horda backend.
+///
+/// Example:
+/// ```dart
+/// class MyAuthProvider implements AuthProvider {
+///   @override
+///   Future<String?> getIdToken() async {
+///     return await getCurrentUserJwtToken();
+///   }
+/// }
+/// ```
 abstract class AuthProvider {
   Future<String?> getIdToken();
 }
 
+/// Service interface for reporting errors to external tracking systems.
+///
+/// Implement this interface to integrate with error tracking services
+/// like Crashlytics, Sentry, or Bugsnag.
 abstract class ErrorTrackingService {
   void reportError(Object e, [StackTrace? stack]);
 }
 
+/// Service interface for reporting analytics events.
+///
+/// Implement this interface to integrate with analytics services
+/// and track user interactions with the Horda client.
 abstract class AnalyticsService {
   void reportMessage(Message msg, [MessageLabels? labels]);
 }
 
+/// Base interface for analytics message labels.
+///
+/// Provides structured metadata for analytics events.
 abstract class MessageLabels {
   Map<String, dynamic> toJson();
 }
 
+/// Analytics labels for send/call operations.
+///
+/// Provides metadata about entity commands being sent or called.
 @JsonSerializable(createFactory: false)
 class SendCallLabels implements MessageLabels {
   SendCallLabels({
@@ -361,6 +410,9 @@ class SendCallLabels implements MessageLabels {
   }
 }
 
+/// Analytics labels for event dispatch operations.
+///
+/// Provides metadata about events being dispatched to the backend.
 @JsonSerializable(createFactory: false)
 class DispatchLabels implements MessageLabels {
   DispatchLabels({required this.senderId});
@@ -373,6 +425,10 @@ class DispatchLabels implements MessageLabels {
   }
 }
 
+/// Test implementation of [AuthProvider] for unit testing.
+///
+/// Returns a static test token, useful for testing scenarios
+/// that require authentication without real credentials.
 class TestAuthProvider implements AuthProvider {
   Future<String?> getIdToken() {
     return Future.value('test-id-token');
