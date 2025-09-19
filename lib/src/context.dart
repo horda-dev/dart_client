@@ -19,6 +19,12 @@ extension HordaModelExtensions on BuildContext {
     await system.reopen();
   }
 
+  Future<void> reopenConnection() async {
+    final system = HordaSystemProvider.of(this);
+    system.clearStore();
+    await system.reopen();
+  }
+
   HordaAuthState get hordaAuthState {
     return HordaSystemProvider.authStateOf(this);
   }
