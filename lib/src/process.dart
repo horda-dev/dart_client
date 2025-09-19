@@ -102,10 +102,10 @@ class HordaProcessElement extends ProxyElement
   HordaClientSystem? _system;
 
   @override
-  void logout() {
+  Future<void> logout() async {
     system.changeAuthState(null);
-    system.reopen(system.conn.url, system.conn.apiKey);
     system.clearStore();
+    await system.reopen();
   }
 
   @override
@@ -115,7 +115,7 @@ class HordaProcessElement extends ProxyElement
     if (system.authProvider == null) {
       system.changeAuthState(null);
     }
-    system.reopen(url, apiKey);
+    system.reopen();
     system.clearStore();
   }
 

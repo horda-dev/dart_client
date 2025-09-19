@@ -56,12 +56,12 @@ class HordaClientSystem {
 
   final ValueNotifier<HordaAuthState> authState;
 
-  void start() {
+  Future<void> start() async {
     logger.fine('starting client system...');
 
     kRegisterFluirMessage();
 
-    conn.open();
+    await conn.open();
 
     logger.info('client system started');
   }
@@ -70,8 +70,8 @@ class HordaClientSystem {
     conn.close();
   }
 
-  void reopen(String url, String apiKey) {
-    conn.reopen(url, apiKey);
+  Future<void> reopen() async {
+    await conn.reopen();
   }
 
   /// Changes the authentication state of the Horda client system.
@@ -346,7 +346,7 @@ class TestHordaClientSystem extends HordaClientSystem {
     super.authProvider,
   });
 
-  void start() {
+  Future<void> start() async {
     // noop
   }
 
