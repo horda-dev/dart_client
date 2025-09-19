@@ -343,8 +343,10 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       }
 
       // Must check if channel is already assigned exactly before assigning a new channel.
-      // Otherwise multiple async calls to _connect() will overwrite the _channel and conflict
-      // with each other, causing unexpected behaivour.
+      // Otherwise multiple async calls to _connect() can overwrite the _channel and conflict
+      // with each other, causing unexpected behavior.
+      //
+      // In this case such issue can occur due to the async gap when getting the id token, in the code above.
       if (_channel != null) {
         throw ChannelOverwriteException();
       }
@@ -357,8 +359,14 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       );
       _channel = newChannel;
 
-      // Set up stream handling and listening BEFORE the async gap of "await newChannel.ready".
-      // Otherwise two different connection attempts can conflict with each other, e.g. throwing a 'Stream already listened to' exception.
+      await newChannel.ready;
+
+      // If this is true, it means that _close() was called and the 'newChannel' was disposed
+      // while we were waiting for it to open.
+      if (newChannel != _channel) {
+        throw ChannelDisposedWhileWaitingException();
+      }
+
       _channelStream = newChannel.stream
           .doOnData((data) => logger.fine('received $data'))
           .doOnError(_onStreamError)
@@ -368,20 +376,12 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       _streamGroup.add(_channelStream!);
       _sub = _streamGroup.stream.listen(_onStreamData);
 
-      await newChannel.ready;
-
-      // If this is true, it means that _close() was called and this channel was disposed
-      // while we were waiting for it to open.
-      if (newChannel != _channel) {
-        throw ChannelDisposedWhileWaitingException();
-      }
-
       logger.info('connected');
 
       return true;
     } on ChannelDisposedWhileWaitingException {
       // Expected behavior, happens when connection is being reopened in a quick succession.
-      logger.warning(
+      logger.fine(
         'previous web socket channel was disposed while waiting for it to open',
       );
 
