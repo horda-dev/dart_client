@@ -1,5 +1,6 @@
-import 'package:horda_core/horda_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:horda_core/horda_core.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 
@@ -73,6 +74,12 @@ class HordaClientSystem {
     conn.reopen(url, apiKey);
   }
 
+  /// Changes the authentication state of the Horda client system.
+  ///
+  /// This method is intended for internal use by the SDK and should not be called
+  /// directly by importing clients. The SDK manages the authentication state
+  /// automatically based on connection events and authentication provider responses.
+  @internal
   void changeAuthState(String? userId) {
     if (userId == null) {
       this.authState.value = AuthStateIncognito();
