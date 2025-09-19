@@ -45,66 +45,17 @@ final class ConnectionStateReconnecting implements HordaConnectionState {}
 /// The connection has been restored and is ready to resume normal operation.
 final class ConnectionStateReconnected implements HordaConnectionState {}
 
-/// Base configuration for connecting to the Horda backend.
-///
-/// Contains the WebSocket URL and API key required for authentication.
-/// Use [IncognitoConfig] for unauthenticated connections or [LoggedInConfig]
-/// for authenticated connections with JWT tokens.
-sealed class ConnectionConfig {
-  ConnectionConfig({required this.url, required this.apiKey});
-
-  /// WebSocket URL for the Horda backend in format: wss://api.horda.ai/[PROJECT_ID]/client
-  final String url;
-
-  /// API key for your Horda project
-  final String apiKey;
-
-  /// HTTP headers sent with the WebSocket connection
-  Map<String, dynamic> get httpHeaders => {'apiKey': apiKey};
-}
-
-/// Configuration for unauthenticated connections to the Horda backend.
-///
-/// Use this configuration when your app doesn't require user authentication.
-/// This is the default connection type used with [NoAuth] authentication provider.
-///
-/// Example:
-/// ```dart
-/// final conn = IncognitoConfig(url: url, apiKey: apiKey);
-/// final system = HordaClientSystem(conn, NoAuth());
-/// ```
-class IncognitoConfig extends ConnectionConfig {
-  IncognitoConfig({required super.url, required super.apiKey});
-}
-
-/// Configuration for authenticated connections to the Horda backend.
-///
-/// Use this configuration when your app requires user authentication with JWT tokens.
-/// Must be used with a custom [AuthProvider] implementation that provides JWT tokens.
-///
-/// Example:
-/// ```dart
-/// final conn = LoggedInConfig(url: url, apiKey: apiKey);
-/// final system = HordaClientSystem(conn, MyAuthProvider());
-/// ```
-class LoggedInConfig extends ConnectionConfig {
-  LoggedInConfig({required super.url, required super.apiKey});
-
-  @override
-  Map<String, dynamic> get httpHeaders => {
-    ...super.httpHeaders,
-    'isNewUser': false,
-  };
-}
-
 /// Abstract interface for managing WebSocket connections to the Horda backend.
 ///
 /// Handles all communication with the server including queries, commands, events,
 /// and view subscriptions. The connection automatically manages reconnection and
 /// provides real-time updates through WebSocket.
 abstract class Connection implements ValueNotifier<HordaConnectionState> {
-  /// Current connection configuration
-  ConnectionConfig get config;
+  /// WebSocket URL for the Horda backend in format: wss://api.horda.ai/[PROJECT_ID]/client
+  String get url;
+
+  /// API key for your Horda project
+  String get apiKey;
 
   /// Opens the WebSocket connection to the backend
   void open();
@@ -113,7 +64,7 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   void close();
 
   /// Reopens the connection with a new configuration
-  void reopen(ConnectionConfig config);
+  void reopen(String url, String apiKey);
 
   /// Executes a query against an entity's views
   ///
@@ -172,13 +123,15 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
 /// - View subscription management for live data updates
 final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     implements Connection {
-  WebSocketConnection(this.system, ConnectionConfig config)
+  WebSocketConnection(this.system, this._url, this._apiKey)
     : logger = Logger('Fluir.Connection'),
-      _config = config,
       super(ConnectionStateDisconnected());
 
   @override
-  ConnectionConfig get config => _config;
+  String get url => _url;
+
+  @override
+  String get apiKey => _apiKey;
 
   final HordaClientSystem system;
 
@@ -242,9 +195,10 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   }
 
   @override
-  void reopen(ConnectionConfig config) {
+  void reopen(String url, String apiKey) {
     close();
-    _config = config;
+    _url = url;
+    _apiKey = apiKey;
     open();
   }
 
@@ -382,10 +336,15 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     }
 
     try {
-      final headers = config.httpHeaders;
-      headers['idToken'] = await system.authProvider.getIdToken();
+      final headers = {'apiKey': _apiKey};
+      if (system.authProvider != null) {
+        final idToken = await system.authProvider!.getIdToken();
+        if (idToken != null) {
+          headers['idToken'] = idToken;
+        }
+      }
       _channel = IOWebSocketChannel.connect(
-        config.url,
+        _url,
         headers: headers,
         pingInterval: const Duration(seconds: 5),
         connectTimeout: const Duration(seconds: 5),
@@ -408,7 +367,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
       return true;
     } catch (e, stack) {
-      logger.warning('web socket connect exception, url(${config.url}): $e');
+      logger.warning('web socket connect exception, url($_url): $e');
 
       system.errorTrackingService?.reportError(e, stack);
 
@@ -521,7 +480,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     Future.delayed(Duration.zero, () => open());
   }
 
-  ConnectionConfig _config;
+  String _url;
+  String _apiKey;
   IOWebSocketChannel? _channel;
   Stream<WsMessageBox>? _channelStream;
   StreamSubscription? _sub;

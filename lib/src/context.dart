@@ -15,12 +15,7 @@ extension HordaModelExtensions on BuildContext {
   void logout() {
     final system = HordaSystemProvider.of(this);
     system.changeAuthState(null);
-    system.reopen(
-      IncognitoConfig(
-        url: system.connectionConfig.url,
-        apiKey: system.connectionConfig.apiKey,
-      ),
-    );
+    system.reopen(system.conn.url, system.conn.apiKey);
     system.clearStore();
   }
 

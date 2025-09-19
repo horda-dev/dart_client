@@ -34,8 +34,9 @@ class RefQuery extends EntityQuery {
 void main() {
   test('query should handle subscribe flag', () async {
     final system = HordaClientSystem(
-      LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
-      TestAuthProvider(),
+      url: 'ws://0.0.0.0:8080/ws',
+      apiKey: 'apikey',
+      authProvider: TestAuthProvider(),
     );
 
     final testQuery = TestQuery().rootHost('Test', system);
@@ -55,8 +56,9 @@ void main() {
 
   test('refquery should handle subscribe flag within subqueries', () async {
     final system = HordaClientSystem(
-      LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
-      TestAuthProvider(),
+      url: 'ws://0.0.0.0:8080/ws',
+      apiKey: 'apikey',
+      authProvider: TestAuthProvider(),
     );
 
     final refQuery = RefQuery().rootHost('Test', system);

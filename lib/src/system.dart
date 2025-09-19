@@ -27,24 +27,21 @@ part 'system.g.dart';
 /// system.start();
 /// ```
 class HordaClientSystem {
-  HordaClientSystem(
-    this.connectionConfig,
-    this.authProvider, {
+  HordaClientSystem({
+    required String url,
+    required String apiKey,
+    this.authProvider,
     this.analyticsService,
     this.errorTrackingService,
   }) : authState = ValueNotifier<HordaAuthState>(
-         connectionConfig is IncognitoConfig
-             ? AuthStateIncognito()
-             : AuthStateValidating(),
+         authProvider == null ? AuthStateIncognito() : AuthStateValidating(),
        ) {
     logger = Logger('Fluir.System');
-    conn = WebSocketConnection(this, connectionConfig);
+    conn = WebSocketConnection(this, url, apiKey);
     messageStore = ClientMessageStore(this, conn);
   }
 
-  ConnectionConfig connectionConfig;
-
-  final AuthProvider authProvider;
+  final AuthProvider? authProvider;
 
   final AnalyticsService? analyticsService;
 
@@ -72,8 +69,8 @@ class HordaClientSystem {
     conn.close();
   }
 
-  void reopen(ConnectionConfig config) {
-    conn.reopen(config);
+  void reopen(String url, String apiKey) {
+    conn.reopen(url, apiKey);
   }
 
   void changeAuthState(String? userId) {
@@ -336,8 +333,11 @@ class HordaClientSystem {
 /// Provides a no-op implementation that doesn't establish real connections,
 /// useful for testing components that depend on the client system.
 class TestHordaClientSystem extends HordaClientSystem {
-  TestHordaClientSystem()
-    : super(IncognitoConfig(url: '', apiKey: ''), TestAuthProvider());
+  TestHordaClientSystem({
+    super.url = '',
+    super.apiKey = '',
+    super.authProvider,
+  });
 
   void start() {
     // noop
