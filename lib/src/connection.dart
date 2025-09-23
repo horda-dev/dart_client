@@ -337,9 +337,9 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     try {
       final headers = <String, String>{'apiKey': _apiKey};
-      final idToken = await system.authProvider?.getIdToken();
+      final idToken = await system.authProvider?.getFirebaseIdToken();
       if (idToken != null) {
-        headers['idToken'] = idToken;
+        headers['firebaseIdToken'] = idToken;
       }
 
       // Must check if channel is already assigned exactly before assigning a new channel.

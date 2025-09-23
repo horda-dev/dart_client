@@ -364,13 +364,13 @@ class TestHordaClientSystem extends HordaClientSystem {
 /// ```dart
 /// class MyAuthProvider implements AuthProvider {
 ///   @override
-///   Future<String?> getIdToken() async {
+///   Future<String?> getFirebaseIdToken() async {
 ///     return await getCurrentUserJwtToken();
 ///   }
 /// }
 /// ```
 abstract class AuthProvider {
-  Future<String?> getIdToken();
+  Future<String?> getFirebaseIdToken();
 }
 
 /// Service interface for reporting errors to external tracking systems.
@@ -437,7 +437,7 @@ class DispatchLabels implements MessageLabels {
 /// Returns a static test token, useful for testing scenarios
 /// that require authentication without real credentials.
 class TestAuthProvider implements AuthProvider {
-  Future<String?> getIdToken() {
+  Future<String?> getFirebaseIdToken() {
     return Future.value('test-id-token');
   }
 }
