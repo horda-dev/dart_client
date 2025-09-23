@@ -58,8 +58,9 @@ class TestListQuery extends EntityQuery {
 void main() {
   test('query host should attach its views', () {
     var system = HordaClientSystem(
-      LoggedInConfig(url: 'ws://0.0.0.0:8080/ws', apiKey: 'apikey'),
-      TestAuthProvider(),
+      url: 'ws://0.0.0.0:8080/ws',
+      apiKey: 'apikey',
+      authProvider: TestAuthProvider(),
     );
     system.start();
 

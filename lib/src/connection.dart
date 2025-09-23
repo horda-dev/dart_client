@@ -45,75 +45,26 @@ final class ConnectionStateReconnecting implements HordaConnectionState {}
 /// The connection has been restored and is ready to resume normal operation.
 final class ConnectionStateReconnected implements HordaConnectionState {}
 
-/// Base configuration for connecting to the Horda backend.
-///
-/// Contains the WebSocket URL and API key required for authentication.
-/// Use [IncognitoConfig] for unauthenticated connections or [LoggedInConfig]
-/// for authenticated connections with JWT tokens.
-sealed class ConnectionConfig {
-  ConnectionConfig({required this.url, required this.apiKey});
-
-  /// WebSocket URL for the Horda backend in format: wss://api.horda.ai/[PROJECT_ID]/client
-  final String url;
-
-  /// API key for your Horda project
-  final String apiKey;
-
-  /// HTTP headers sent with the WebSocket connection
-  Map<String, dynamic> get httpHeaders => {'apiKey': apiKey};
-}
-
-/// Configuration for unauthenticated connections to the Horda backend.
-///
-/// Use this configuration when your app doesn't require user authentication.
-/// This is the default connection type used with [NoAuth] authentication provider.
-///
-/// Example:
-/// ```dart
-/// final conn = IncognitoConfig(url: url, apiKey: apiKey);
-/// final system = HordaClientSystem(conn, NoAuth());
-/// ```
-class IncognitoConfig extends ConnectionConfig {
-  IncognitoConfig({required super.url, required super.apiKey});
-}
-
-/// Configuration for authenticated connections to the Horda backend.
-///
-/// Use this configuration when your app requires user authentication with JWT tokens.
-/// Must be used with a custom [AuthProvider] implementation that provides JWT tokens.
-///
-/// Example:
-/// ```dart
-/// final conn = LoggedInConfig(url: url, apiKey: apiKey);
-/// final system = HordaClientSystem(conn, MyAuthProvider());
-/// ```
-class LoggedInConfig extends ConnectionConfig {
-  LoggedInConfig({required super.url, required super.apiKey});
-
-  @override
-  Map<String, dynamic> get httpHeaders => {
-    ...super.httpHeaders,
-    'isNewUser': false,
-  };
-}
-
 /// Abstract interface for managing WebSocket connections to the Horda backend.
 ///
 /// Handles all communication with the server including queries, commands, events,
 /// and view subscriptions. The connection automatically manages reconnection and
 /// provides real-time updates through WebSocket.
 abstract class Connection implements ValueNotifier<HordaConnectionState> {
-  /// Current connection configuration
-  ConnectionConfig get config;
+  /// WebSocket URL for the Horda backend in format: wss://api.horda.ai/[PROJECT_ID]/client
+  String get url;
+
+  /// API key for your Horda project
+  String get apiKey;
 
   /// Opens the WebSocket connection to the backend
-  void open();
+  Future<void> open();
 
   /// Closes the WebSocket connection
   void close();
 
   /// Reopens the connection with a new configuration
-  void reopen(ConnectionConfig config);
+  Future<void> reopen();
 
   /// Executes a query against an entity's views
   ///
@@ -172,20 +123,22 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
 /// - View subscription management for live data updates
 final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     implements Connection {
-  WebSocketConnection(this.system, ConnectionConfig config)
+  WebSocketConnection(this.system, this._url, this._apiKey)
     : logger = Logger('Fluir.Connection'),
-      _config = config,
       super(ConnectionStateDisconnected());
 
   @override
-  ConnectionConfig get config => _config;
+  String get url => _url;
+
+  @override
+  String get apiKey => _apiKey;
 
   final HordaClientSystem system;
 
   final Logger logger;
 
   @override
-  void open() async {
+  Future<void> open() async {
     logger.fine('opening...');
     _isConnected = false;
 
@@ -224,7 +177,13 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
         await Future.delayed(delay);
       }
 
-      connected = await _connect();
+      try {
+        connected = await _connect();
+      } on ChannelDisposedWhileWaitingException {
+        // A new websocket connection (another async open() call) is being opened
+        // while waiting for the previous one. Stop execution to avoid mutating state.
+        return;
+      }
 
       retries += 1;
     } while (!connected);
@@ -238,14 +197,13 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     _drainQueue();
 
-    logger.info('opened');
+    logger.fine('opened');
   }
 
   @override
-  void reopen(ConnectionConfig config) {
+  Future<void> reopen() async {
     close();
-    _config = config;
-    open();
+    await open();
   }
 
   @override
@@ -377,38 +335,59 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   Future<bool> _connect() async {
     logger.fine('connecting...');
 
-    if (_channel != null) {
-      throw FluirError('web socket channel is already opened');
-    }
-
     try {
-      final headers = config.httpHeaders;
-      headers['idToken'] = await system.authProvider.getIdToken();
-      _channel = IOWebSocketChannel.connect(
-        config.url,
+      final headers = <String, String>{'apiKey': _apiKey};
+      final idToken = await system.authProvider?.getFirebaseIdToken();
+      if (idToken != null) {
+        headers['firebaseIdToken'] = idToken;
+      }
+
+      // Must check if channel is already assigned exactly before assigning a new channel.
+      // Otherwise multiple async calls to _connect() can overwrite the _channel and conflict
+      // with each other, causing unexpected behavior.
+      //
+      // In this case such issue can occur due to the async gap when getting the id token, in the code above.
+      if (_channel != null) {
+        throw ChannelOverwriteException();
+      }
+
+      final newChannel = IOWebSocketChannel.connect(
+        _url,
         headers: headers,
         pingInterval: const Duration(seconds: 5),
         connectTimeout: const Duration(seconds: 5),
       );
+      _channel = newChannel;
 
-      await _channel!.ready;
+      await newChannel.ready;
 
-      _channelStream = _channel!.stream
+      // If this is true, it means that _close() was called and the 'newChannel' was disposed
+      // while we were waiting for it to open.
+      if (newChannel != _channel) {
+        throw ChannelDisposedWhileWaitingException();
+      }
+
+      _channelStream = newChannel.stream
           .doOnData((data) => logger.fine('received $data'))
           .doOnError(_onStreamError)
           .doOnDone(_onStreamDone)
           .doOnCancel(() => logger.warning('connection got canceled'))
           .map((data) => WsMessageBox.decodeJson(data, logger));
-
       _streamGroup.add(_channelStream!);
-
       _sub = _streamGroup.stream.listen(_onStreamData);
 
       logger.info('connected');
 
       return true;
+    } on ChannelDisposedWhileWaitingException {
+      // Expected behavior, happens when connection is being reopened in a quick succession.
+      logger.fine(
+        'previous web socket channel was disposed while waiting for it to open',
+      );
+
+      rethrow;
     } catch (e, stack) {
-      logger.warning('web socket connect exception, url(${config.url}): $e');
+      logger.warning('web socket connect exception, url($_url): $e');
 
       system.errorTrackingService?.reportError(e, stack);
 
@@ -521,7 +500,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     Future.delayed(Duration.zero, () => open());
   }
 
-  ConnectionConfig _config;
+  String _url;
+  String _apiKey;
   IOWebSocketChannel? _channel;
   Stream<WsMessageBox>? _channelStream;
   StreamSubscription? _sub;
@@ -530,4 +510,32 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   bool _isFirstTimeConnect = true;
   final _streamGroup = StreamGroup<WsMessageBox>.broadcast();
   final _queue = Queue<WsMessageBox>();
+}
+
+class ConnectionException implements Exception {
+  ConnectionException(this.message);
+
+  final String message;
+
+  @override
+  String toString() {
+    return message;
+  }
+}
+
+/// This exception may occur if a new websocket channel
+/// is being opened without cleaning up the existing one.
+class ChannelOverwriteException extends ConnectionException {
+  ChannelOverwriteException()
+    : super('attempted to overwrite the web socket channel');
+}
+
+/// Expected exception, thrown if a new websocket connections was opened
+/// while we were waiting for the previous one to open.
+///
+/// This exception should be used to prevent the two async calls to [Connection.open]
+/// from conflicting with each other, mutating shared state, causing other unexpected behaviour.
+class ChannelDisposedWhileWaitingException extends ConnectionException {
+  ChannelDisposedWhileWaitingException()
+    : super('web socket channel was disposed while waiting for it to open');
 }

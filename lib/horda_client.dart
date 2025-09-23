@@ -10,10 +10,7 @@ export 'src/connection.dart'
         ConnectionStateConnecting,
         ConnectionStateConnected,
         ConnectionStateReconnecting,
-        ConnectionStateReconnected,
-        ConnectionConfig,
-        IncognitoConfig,
-        LoggedInConfig;
+        ConnectionStateReconnected;
 export 'src/context.dart';
 export 'src/devtool.dart';
 export 'src/process.dart';

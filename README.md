@@ -82,7 +82,7 @@ import 'package:horda_client/horda_client.dart';
 
 class MyAuthProvider implements AuthProvider {
   @override
-  Future<String?> getIdToken() async {
+  Future<String?> getFirebaseIdToken() async {
     // Retrieve JWT token from your authentication service
     // This could be Firebase Auth, Auth0, or your custom JWT provider
     final token = await getCurrentUserJwtToken();

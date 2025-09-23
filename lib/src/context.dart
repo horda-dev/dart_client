@@ -12,16 +12,17 @@ import 'query.dart';
 /// Adds convenient methods to [BuildContext] for accessing Horda authentication
 /// and connection states, as well as logout functionality.
 extension HordaModelExtensions on BuildContext {
-  void logout() {
+  Future<void> logout() async {
     final system = HordaSystemProvider.of(this);
     system.changeAuthState(null);
-    system.reopen(
-      IncognitoConfig(
-        url: system.connectionConfig.url,
-        apiKey: system.connectionConfig.apiKey,
-      ),
-    );
     system.clearStore();
+    await system.reopen();
+  }
+
+  Future<void> reopenConnection() async {
+    final system = HordaSystemProvider.of(this);
+    system.clearStore();
+    await system.reopen();
   }
 
   HordaAuthState get hordaAuthState {

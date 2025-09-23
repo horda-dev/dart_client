@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:horda_core/horda_core.dart';
 import 'package:flutter/widgets.dart';
+import 'package:horda_core/horda_core.dart';
 import 'package:logging/logging.dart';
 
 import 'entities.dart';
-import 'connection.dart';
 import 'message.dart';
 import 'provider.dart';
 import 'system.dart';
@@ -20,7 +19,7 @@ abstract class HordaProcessContext {
 
   void logout();
 
-  void changeConnection(ConnectionConfig conn);
+  void changeConnection();
 
   void sendLocal(LocalCommand cmd);
 
@@ -103,23 +102,20 @@ class HordaProcessElement extends ProxyElement
   HordaClientSystem? _system;
 
   @override
-  void logout() {
+  Future<void> logout() async {
     system.changeAuthState(null);
-    system.reopen(
-      IncognitoConfig(
-        url: system.connectionConfig.url,
-        apiKey: system.connectionConfig.apiKey,
-      ),
-    );
     system.clearStore();
+    await system.reopen();
   }
 
   @override
-  void changeConnection(ConnectionConfig conn) {
-    if (conn is IncognitoConfig) {
+  void changeConnection() {
+    // If authProvider is null, it means we are in incognito mode.
+    // So, when changing connection, if the new connection is incognito, we should change auth state to incognito.
+    if (system.authProvider == null) {
       system.changeAuthState(null);
     }
-    system.reopen(conn);
+    system.reopen();
     system.clearStore();
   }
 

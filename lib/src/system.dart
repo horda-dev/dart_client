@@ -1,5 +1,6 @@
-import 'package:horda_core/horda_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:horda_core/horda_core.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 
@@ -27,24 +28,21 @@ part 'system.g.dart';
 /// system.start();
 /// ```
 class HordaClientSystem {
-  HordaClientSystem(
-    this.connectionConfig,
-    this.authProvider, {
+  HordaClientSystem({
+    required String url,
+    required String apiKey,
+    this.authProvider,
     this.analyticsService,
     this.errorTrackingService,
   }) : authState = ValueNotifier<HordaAuthState>(
-         connectionConfig is IncognitoConfig
-             ? AuthStateIncognito()
-             : AuthStateValidating(),
+         authProvider == null ? AuthStateIncognito() : AuthStateValidating(),
        ) {
     logger = Logger('Fluir.System');
-    conn = WebSocketConnection(this, connectionConfig);
+    conn = WebSocketConnection(this, url, apiKey);
     messageStore = ClientMessageStore(this, conn);
   }
 
-  ConnectionConfig connectionConfig;
-
-  final AuthProvider authProvider;
+  final AuthProvider? authProvider;
 
   final AnalyticsService? analyticsService;
 
@@ -58,12 +56,12 @@ class HordaClientSystem {
 
   final ValueNotifier<HordaAuthState> authState;
 
-  void start() {
+  Future<void> start() async {
     logger.fine('starting client system...');
 
     kRegisterFluirMessage();
 
-    conn.open();
+    await conn.open();
 
     logger.info('client system started');
   }
@@ -72,10 +70,16 @@ class HordaClientSystem {
     conn.close();
   }
 
-  void reopen(ConnectionConfig config) {
-    conn.reopen(config);
+  Future<void> reopen() async {
+    await conn.reopen();
   }
 
+  /// Changes the authentication state of the Horda client system.
+  ///
+  /// This method is intended for internal use by the SDK and should not be called
+  /// directly by importing clients. The SDK manages the authentication state
+  /// automatically based on connection events and authentication provider responses.
+  @internal
   void changeAuthState(String? userId) {
     if (userId == null) {
       this.authState.value = AuthStateIncognito();
@@ -336,10 +340,13 @@ class HordaClientSystem {
 /// Provides a no-op implementation that doesn't establish real connections,
 /// useful for testing components that depend on the client system.
 class TestHordaClientSystem extends HordaClientSystem {
-  TestHordaClientSystem()
-    : super(IncognitoConfig(url: '', apiKey: ''), TestAuthProvider());
+  TestHordaClientSystem({
+    super.url = '',
+    super.apiKey = '',
+    super.authProvider,
+  });
 
-  void start() {
+  Future<void> start() async {
     // noop
   }
 
@@ -357,13 +364,13 @@ class TestHordaClientSystem extends HordaClientSystem {
 /// ```dart
 /// class MyAuthProvider implements AuthProvider {
 ///   @override
-///   Future<String?> getIdToken() async {
+///   Future<String?> getFirebaseIdToken() async {
 ///     return await getCurrentUserJwtToken();
 ///   }
 /// }
 /// ```
 abstract class AuthProvider {
-  Future<String?> getIdToken();
+  Future<String?> getFirebaseIdToken();
 }
 
 /// Service interface for reporting errors to external tracking systems.
@@ -430,7 +437,7 @@ class DispatchLabels implements MessageLabels {
 /// Returns a static test token, useful for testing scenarios
 /// that require authentication without real credentials.
 class TestAuthProvider implements AuthProvider {
-  Future<String?> getIdToken() {
+  Future<String?> getFirebaseIdToken() {
     return Future.value('test-id-token');
   }
 }
