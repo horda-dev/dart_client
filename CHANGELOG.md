@@ -1,3 +1,7 @@
+## 0.20.0
+
+- **BREAKING CHANGE**: update Auth API, connection configs were removed
+
 ## 0.19.1
 
  - **DOCS**: add README.md
