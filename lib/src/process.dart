@@ -19,7 +19,7 @@ abstract class HordaProcessContext {
 
   void logout();
 
-  void changeConnection(String url, String apiKey);
+  void changeConnection();
 
   void sendLocal(LocalCommand cmd);
 
@@ -109,7 +109,7 @@ class HordaProcessElement extends ProxyElement
   }
 
   @override
-  void changeConnection(String url, String apiKey) {
+  void changeConnection() {
     // If authProvider is null, it means we are in incognito mode.
     // So, when changing connection, if the new connection is incognito, we should change auth state to incognito.
     if (system.authProvider == null) {
