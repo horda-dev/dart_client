@@ -174,7 +174,13 @@ class HordaClientSystem {
     // Therefore manually publish an empty ChangeEnvelop2 to let view report as ready.
     for (final sub in alreadySubbed) {
       logger.info('$sub is already subbed, publishing empty change envelop...');
-      publishChange(ChangeEnvelop.empty(key: sub.id, name: sub.name));
+      publishChange(
+        ChangeEnvelop.empty(
+          entityName: sub.entityName,
+          key: sub.id,
+          name: sub.name,
+        ),
+      );
     }
 
     if (readyToSub.isEmpty) {
@@ -220,19 +226,33 @@ class HordaClientSystem {
 
   /// Returns the number of the latest stored version of a view or attribute.
   /// Will return null if view has no locally stored history.
-  String? latestStoredChangeIdOf({required String id, required String name}) {
-    return messageStore.latestStoredChangeId(id: id, name: name);
+  String? latestStoredChangeIdOf({
+    required String entityName,
+    required String id,
+    required String name,
+  }) {
+    return messageStore.latestStoredChangeId(
+      entityName: entityName,
+      id: id,
+      name: name,
+    );
   }
 
   /// Returns a [Stream] of [ChangeEnvelop]s which includes both change history and future changes.
   ///
   /// [startAt] is a change id which we want to start getting changes at from history.
   Stream<ChangeEnvelop> changes({
+    required String entityName,
     required String id,
     required String name,
     String startAt = '',
   }) {
-    return messageStore.changes(id: id, name: name, startAt: startAt);
+    return messageStore.changes(
+      entityName: entityName,
+      id: id,
+      name: name,
+      startAt: startAt,
+    );
   }
 
   /// Returns an [Iterable] of [ChangeEnvelop]s from view(or attribute)'s change history,
@@ -240,19 +260,30 @@ class HordaClientSystem {
   ///
   /// [startAt] is a change id which we want to start getting changes at from history.
   Iterable<ChangeEnvelop> changeHistory({
+    required String entityName,
     required String id,
     required String name,
     String startAt = '',
   }) {
-    return messageStore.changeHistory(id: id, name: name, startAt: startAt);
+    return messageStore.changeHistory(
+      entityName: entityName,
+      id: id,
+      name: name,
+      startAt: startAt,
+    );
   }
 
   /// Returns a [Stream] of [ChangeEnvelop]s which emits future changes which are coming from the server.
   Stream<ChangeEnvelop> futureChanges({
+    required String entityName,
     required String id,
     required String name,
   }) {
-    return messageStore.futureChanges(id: id, name: name);
+    return messageStore.futureChanges(
+      entityName: entityName,
+      id: id,
+      name: name,
+    );
   }
 
   /// Clears local storage of [Change]s and [RemoteEvent]s.
@@ -265,7 +296,7 @@ class HordaClientSystem {
     final viewsToSub = <ActorViewSub>[];
 
     for (final sub in subs) {
-      final subKey = '${sub.id}/${sub.name}';
+      final subKey = sub.subKey;
 
       if (_viewSubCount.containsKey(subKey)) {
         final oldHostCount = _viewSubCount[subKey]!;
@@ -290,7 +321,7 @@ class HordaClientSystem {
     final viewsToUnsub = <ActorViewSub>[];
 
     for (final sub in subs) {
-      final subKey = '${sub.id}/${sub.name}';
+      final subKey = sub.subKey;
 
       if (_viewSubCount.containsKey(subKey)) {
         final oldHostCount = _viewSubCount[subKey]!;
@@ -330,7 +361,7 @@ class HordaClientSystem {
   }
 
   /// Stores the count of subs per view.
-  /// - Key - view subscription key: `'actorId/viewName'`
+  /// - Key - view subscription key (entityName/id/name for views, id/name for attrs)
   /// - Value - count of hosts which depend on a view subscription
   final _viewSubCount = <String, int>{};
 }
