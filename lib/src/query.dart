@@ -37,6 +37,8 @@ abstract class EntityQuery implements EntityQueryGroup {
 
   String get name => '$runtimeType';
 
+  String get entityName;
+
   Map<String, EntityView> get views => _views;
 
   @override
@@ -45,9 +47,9 @@ abstract class EntityQuery implements EntityQueryGroup {
   }
 
   QueryDefBuilder queryBuilder() {
-    var qb = QueryDefBuilder();
+    final qb = QueryDefBuilder(entityName);
 
-    for (var v in _views.values) {
+    for (final v in _views.values) {
       qb.add(v.queryBuilder());
     }
 
@@ -76,6 +78,9 @@ abstract class EntityQuery implements EntityQueryGroup {
 /// Used as a placeholder when you need a query but don't want to
 /// retrieve any specific data from the entity.
 class EmptyQuery extends EntityQuery {
+  @override
+  String get entityName => '';
+
   @override
   void initViews(EntityQueryGroup views) {}
 }
@@ -262,9 +267,9 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
 
   @override
   ViewQueryDefBuilder queryBuilder() {
-    var qb = RefQueryDefBuilder(name, attrs);
+    final qb = RefQueryDefBuilder(query.entityName, name, attrs);
 
-    for (var v in query.views.values) {
+    for (final v in query.views.values) {
       qb.add(v.queryBuilder());
     }
 
@@ -306,7 +311,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
 
   @override
   ViewQueryDefBuilder queryBuilder() {
-    var qb = ListQueryDefBuilder(name, attrs);
+    var qb = ListQueryDefBuilder(query.entityName, name, attrs);
 
     for (var v in query.views.values) {
       qb.add(v.queryBuilder());
@@ -620,6 +625,8 @@ abstract class ActorViewHost {
 
   EntityId? actorId;
 
+  String get entityName => parent.query.entityName;
+
   dynamic get value => _value;
 
   String get changeId => _changeId;
@@ -660,7 +667,12 @@ abstract class ActorViewHost {
 
     // The latest stored version at the moment of subscription to stream of changes
     final latestStoredChangeId =
-        system.latestStoredChangeIdOf(id: actorId, name: view.name) ?? changeId;
+        system.latestStoredChangeIdOf(
+          entityName: entityName,
+          id: actorId,
+          name: view.name,
+        ) ??
+        changeId;
 
     // If we were subbed to a view, then unsubbed and after a while
     // subbed again, message store won't be able to save changes due to
@@ -669,6 +681,7 @@ abstract class ActorViewHost {
     if (ChangeId.fromString(result.changeId) >
         ChangeId.fromString(latestStoredChangeId)) {
       system.messageStore.removeChanges(
+        entityName: entityName,
         id: actorId,
         name: view.name,
         upToVersion: result.changeId,
@@ -676,7 +689,12 @@ abstract class ActorViewHost {
     }
 
     _sub = system
-        .changes(id: actorId, name: view.name, startAt: changeId)
+        .changes(
+          entityName: entityName,
+          id: actorId,
+          name: view.name,
+          startAt: changeId,
+        )
         .listen((event) => _project(event, latestStoredChangeId));
 
     logger.info('$actorId: attached');
@@ -996,9 +1014,15 @@ class ActorValueViewHost<T> extends ActorViewHost {
 
     if (view.subscribe) {
       final latestChangeId =
-          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
+          system.latestStoredChangeIdOf(
+            entityName: entityName,
+            id: actorId!,
+            name: view.name,
+          ) ??
           changeId;
-      return [ActorViewSub(actorId!, view.name, latestChangeId)];
+      return [
+        ActorViewSub(entityName, actorId!, view.name, latestChangeId),
+      ];
     } else {
       return [];
     }
@@ -1061,9 +1085,15 @@ class ActorCounterViewHost extends ActorViewHost {
 
     if (view.subscribe) {
       final latestChangeId =
-          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
+          system.latestStoredChangeIdOf(
+            entityName: entityName,
+            id: actorId!,
+            name: view.name,
+          ) ??
           changeId;
-      return [ActorViewSub(actorId!, view.name, latestChangeId)];
+      return [
+        ActorViewSub(entityName, actorId!, view.name, latestChangeId),
+      ];
     } else {
       return [];
     }
@@ -1226,9 +1256,13 @@ class ActorRefViewHost extends ActorViewHost {
 
     if (view.subscribe) {
       final latestChangeId =
-          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
+          system.latestStoredChangeIdOf(
+            entityName: entityName,
+            id: actorId!,
+            name: view.name,
+          ) ??
           changeId;
-      subs.add(ActorViewSub(actorId!, view.name, latestChangeId));
+      subs.add(ActorViewSub(entityName, actorId!, view.name, latestChangeId));
     }
 
     if (refId != null) {
@@ -1557,9 +1591,16 @@ class ActorListViewHost extends ActorViewHost {
 
     if (view.subscribe) {
       final latestChangeId =
-          system.latestStoredChangeIdOf(id: actorId!, name: view.name) ??
+          system.latestStoredChangeIdOf(
+            entityName: entityName,
+            id: actorId!,
+            name: view.name,
+          ) ??
           changeId;
-      subs.add(ActorViewSub(actorId!, view.name, latestChangeId));
+
+      subs.add(
+        ActorViewSub(entityName, actorId!, view.name, latestChangeId),
+      );
     }
 
     for (final child in _children.values) {
@@ -2101,6 +2142,10 @@ class AttributesHost {
   final HordaClientSystem system;
   final Logger logger;
 
+  /// Since collisions with entityId1-entityId2/attrName key format are unlikely,
+  /// entity name is empty for attributes and their changes.
+  String get entityName => '';
+
   /// Id of type [String] produced by combining id of two actors via [CompositeId]
   EntityId? id;
 
@@ -2160,9 +2205,9 @@ class AttributesHost {
       };
       final Map<String, dynamic> attr = _attrs[name];
 
-      _subs[name] = system.changes(id: id!, name: name).listen((e) {
-        _project(name, attr, e);
-      });
+      _subs[name] = system
+          .changes(entityName: entityName, id: id!, name: name)
+          .listen((e) => _project(name, attr, e));
     }
 
     logger.fine('attached attrHost $debugId');
@@ -2188,9 +2233,13 @@ class AttributesHost {
 
     for (final MapEntry(key: name, value: attr) in _attrs.entries) {
       final latestChangeId =
-          system.latestStoredChangeIdOf(id: id!, name: viewName) ??
+          system.latestStoredChangeIdOf(
+            entityName: entityName,
+            id: id!,
+            name: viewName,
+          ) ??
           attr['version'] as String;
-      viewSubs.add(ActorViewSub(id!, name, latestChangeId));
+      viewSubs.add(ActorViewSub.attr(id!, name, latestChangeId));
     }
 
     return viewSubs;
