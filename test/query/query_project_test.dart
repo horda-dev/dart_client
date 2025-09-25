@@ -96,6 +96,9 @@ class TestApp extends StatelessWidget {
 }
 
 class TestQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestEntity';
+
   var list1 = EntityListView('list1', query: TestListQuery());
 
   var ref1 = EntityRefView('ref1', query: TestRefQuery());
@@ -109,6 +112,9 @@ class TestQuery extends EntityQuery {
 }
 
 class TestListQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestListEntity';
+
   var view1 = EntityValueView<String>('view1');
 
   var view2 = EntityValueView<String>('view2');
@@ -122,6 +128,9 @@ class TestListQuery extends EntityQuery {
 }
 
 class TestRefQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestRefEntity';
+
   var view3 = EntityValueView<String>('view3');
 
   var view4 = EntityValueView<String>('view4');

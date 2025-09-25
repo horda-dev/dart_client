@@ -2,6 +2,9 @@ import 'package:horda_client/horda_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class TestQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestEntity';
+
   final view1 = EntityValueView<String>('view1');
 
   final view2 = EntityValueView<String>('view2');
@@ -29,6 +32,9 @@ class TestQuery extends EntityQuery {
 }
 
 class TestRefQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestRefEntity';
+
   final view3 = EntityValueView<String>('view3');
 
   final view4 = EntityValueView<String>('view4');
@@ -42,6 +48,9 @@ class TestRefQuery extends EntityQuery {
 }
 
 class TestListQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestListEntity';
+
   final view5 = EntityValueView<String>('view5');
 
   final view6 = EntityValueView<String>('view6');
@@ -58,15 +67,15 @@ void main() {
   test('query def should produce query definition', () {
     var q = TestQuery();
 
-    var expected = QueryDefBuilder()
+    var expected = QueryDefBuilder('TestEntity')
       ..val('view1')
       ..val('view2')
-      ..ref('ref1', ['attr1', 'attr2'], (qb) {
+      ..ref('TestRefEntity', 'ref1', ['attr1', 'attr2'], (qb) {
         qb
           ..val('view3')
           ..val('view4');
       })
-      ..list('list1', ['attr3', 'attr4'], (qb) {
+      ..list('TestListEntity', 'list1', ['attr3', 'attr4'], (qb) {
         qb
           ..val('view5')
           ..val('view6');
@@ -76,61 +85,79 @@ void main() {
   });
 
   test('query def builder should produce correct json', () {
-    var def = QueryDefBuilder()
+    var def = QueryDefBuilder('TestEntity')
       ..val('view1')
       ..val('view2')
-      ..ref('ref1', ['attr1', 'attr2'], (qb) {
+      ..ref('TestRefEntity', 'ref1', ['attr1', 'attr2'], (qb) {
         qb
           ..val('view3')
           ..val('view4');
       })
-      ..list('list1', ['attr3', 'attr4'], (qb) {
+      ..list('TestListEntity', 'list1', ['attr3', 'attr4'], (qb) {
         qb
           ..val('view5')
           ..val('view6');
       });
 
     expect(def.build().toJson(), {
-      'view1': {'type': 'val'},
-      'view2': {'type': 'val'},
-      'ref1': {
-        'type': 'ref',
-        'query': {
-          'view3': {'type': 'val'},
-          'view4': {'type': 'val'},
+      'entityName': 'TestEntity',
+      'views': {
+        'view1': {'type': 'val'},
+        'view2': {'type': 'val'},
+        'ref1': {
+          'type': 'ref',
+          'query': {
+            'entityName': 'TestRefEntity',
+            'views': {
+              'view3': {'type': 'val'},
+              'view4': {'type': 'val'},
+            },
+          },
+          'attrs': ['attr1', 'attr2'],
         },
-        'attrs': ['attr1', 'attr2'],
-      },
-      'list1': {
-        'type': 'list',
-        'query': {
-          'view5': {'type': 'val'},
-          'view6': {'type': 'val'},
+        'list1': {
+          'type': 'list',
+          'query': {
+            'entityName': 'TestListEntity',
+            'views': {
+              'view5': {'type': 'val'},
+              'view6': {'type': 'val'},
+            },
+          },
+          'attrs': ['attr3', 'attr4'],
         },
-        'attrs': ['attr3', 'attr4'],
       },
     });
   });
 
   test('query def should parse json correctly', () {
     final defJson = {
-      'view1': {'type': 'val'},
-      'view2': {'type': 'val'},
-      'ref1': {
-        'type': 'ref',
-        'query': {
-          'view3': {'type': 'val'},
-          'view4': {'type': 'val'},
+      'entityName': 'TestEntity',
+      'views': {
+        'view1': {'type': 'val'},
+        'view2': {'type': 'val'},
+        'ref1': {
+          'type': 'ref',
+          'query': {
+            'entityName': 'TestRefEntity',
+            'views': {
+              'view3': {'type': 'val'},
+              'view4': {'type': 'val'},
+            },
+          },
+          'attrs': ['attr1', 'attr2'],
         },
-        'attrs': ['attr1', 'attr2'],
-      },
-      'list1': {
-        'type': 'list',
-        'query': {
-          'view5': {'type': 'val'},
-          'view6': {'type': 'val'},
+        'list1': {
+          'type': 'list',
+          'query': {
+            'entityName': 'TestListEntity',
+            'views': {
+              'view5': {'type': 'val'},
+              'view6': {'type': 'val'},
+            },
+          },
+          'attrs': ['attr3', 'attr4'],
         },
-        'attrs': ['attr3', 'attr4'],
       },
     };
 
@@ -145,17 +172,26 @@ void main() {
 
   test('query def should parse json correctly if no attrs', () {
     final defJson = {
-      'ref1': {
-        'type': 'ref',
-        'query': {
-          'view1': {'type': 'val'},
+      'entityName': 'TestEntity',
+      'views': {
+        'ref1': {
+          'type': 'ref',
+          'query': {
+            'entityName': 'TestRefEntity',
+            'views': {
+              'view1': {'type': 'val'},
+            },
+          },
         },
-      },
-      'list1': {
-        'type': 'list',
-        'query': {
-          'view5': {'type': 'val'},
-          'view6': {'type': 'val'},
+        'list1': {
+          'type': 'list',
+          'query': {
+            'entityName': 'TestListEntity',
+            'views': {
+              'view5': {'type': 'val'},
+              'view6': {'type': 'val'},
+            },
+          },
         },
       },
     };
@@ -170,15 +206,15 @@ void main() {
   });
 
   test('query definition builder should build the right definition', () {
-    var qb = QueryDefBuilder()
+    var qb = QueryDefBuilder('TestEntity')
       ..val('view11')
       ..val('view12')
-      ..ref('ref1', ['attr1', 'attr2'], (qb) {
+      ..ref('TestRefEntity', 'ref1', ['attr1', 'attr2'], (qb) {
         qb
           ..val('view21')
           ..val('view22');
       })
-      ..list('list1', ['attr1', 'attr2'], (qb) {
+      ..list('TestListEntity', 'list1', ['attr1', 'attr2'], (qb) {
         qb
           ..val('view31')
           ..val('view32');
@@ -229,15 +265,15 @@ void main() {
   });
 
   test('query def builder should produce json', () {
-    var qb = QueryDefBuilder()
+    var qb = QueryDefBuilder('TestEntity')
       ..val('view11')
       ..val('view12')
-      ..ref('ref1', [], (qb) {
+      ..ref('TestRefEntity', 'ref1', [], (qb) {
         qb
           ..val('view21')
           ..val('view22');
       })
-      ..list('list1', [], (qb) {
+      ..list('TestListEntity', 'list1', [], (qb) {
         qb
           ..val('view31')
           ..val('view32');
@@ -246,20 +282,29 @@ void main() {
     var res = qb.build();
 
     expect(res.toJson(), {
-      'view11': {'type': 'val'},
-      'view12': {'type': 'val'},
-      'ref1': {
-        'type': 'ref',
-        'query': {
-          'view21': {'type': 'val'},
-          'view22': {'type': 'val'},
+      'entityName': 'TestEntity',
+      'views': {
+        'view11': {'type': 'val'},
+        'view12': {'type': 'val'},
+        'ref1': {
+          'type': 'ref',
+          'query': {
+            'entityName': 'TestRefEntity',
+            'views': {
+              'view21': {'type': 'val'},
+              'view22': {'type': 'val'},
+            },
+          },
         },
-      },
-      'list1': {
-        'type': 'list',
-        'query': {
-          'view31': {'type': 'val'},
-          'view32': {'type': 'val'},
+        'list1': {
+          'type': 'list',
+          'query': {
+            'entityName': 'TestListEntity',
+            'views': {
+              'view31': {'type': 'val'},
+              'view32': {'type': 'val'},
+            },
+          },
         },
       },
     });

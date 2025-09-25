@@ -3,6 +3,9 @@ import 'package:horda_client/horda_client.dart';
 import 'package:horda_client/src/query.dart';
 
 class TestQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestEntity';
+
   final view1 = EntityValueView<String>('view1');
 
   final view2 = EntityValueView<String>('view2');
@@ -30,6 +33,9 @@ class TestQuery extends EntityQuery {
 }
 
 class TestRefQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestRefEntity';
+
   final view3 = EntityValueView<String>('view3');
 
   final view4 = EntityValueView<String>('view4');
@@ -43,6 +49,9 @@ class TestRefQuery extends EntityQuery {
 }
 
 class TestListQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestListEntity';
+
   final view5 = EntityValueView<String>('view5');
 
   final view6 = EntityValueView<String>('view6');
