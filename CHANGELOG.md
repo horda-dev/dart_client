@@ -1,3 +1,9 @@
+## 0.21.0
+
+- **BREAKING CHANGE**: entity queries now require an entity name
+- **FEAT**: entity name is now part of view key
+- **FEAT**: use horda_core 0.14.0
+
 ## 0.20.0
 
 - **BREAKING CHANGE**: update Auth API, connection configs were removed
