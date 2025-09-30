@@ -46,15 +46,17 @@ class ClientMessageStore {
 
   /// Returns an [Iterable] with one [ChangeEnvelop] which contains all past changes.
   Iterable<ChangeEnvelop> changeHistory({
+    required String entityName,
     required EntityId id,
     required String name,
     required String startAt,
   }) {
-    final fullName = 'for $id/$name starting at $startAt';
+    final logId = '$entityName/$id/$name';
 
-    logger.fine('changes: getting for $fullName starting at $startAt...');
+    final fullName = '$logId starting at $startAt';
 
-    final logId = '$id/$name';
+    logger.fine('changes: getting for $fullName...');
+
     final log = _changeStore[logId];
 
     if (log == null) {
@@ -68,23 +70,23 @@ class ClientMessageStore {
       (e) => ChangeId.fromString(e.changeId) > startAtChId,
     );
     if (idx == -1) {
-      logger.fine(
-        'changes: no changes found for $fullName starting at $startAt',
-      );
+      logger.fine('changes: no changes found for $fullName');
       return [];
     }
 
     final range = log.getRange(idx, log.length);
 
-    logger.info(
-      'changes: got ${range.length} changes for $fullName starting at $startAt',
-    );
+    logger.info('changes: got ${range.length} changes for $fullName');
 
     return [...range];
   }
 
-  String? latestStoredChangeId({required EntityId id, required String name}) {
-    final logId = '$id/$name';
+  String? latestStoredChangeId({
+    required String entityName,
+    required EntityId id,
+    required String name,
+  }) {
+    final logId = '$entityName/$id/$name';
 
     logger.fine('Getting latest version of $logId');
 
@@ -101,6 +103,7 @@ class ClientMessageStore {
   // startAt is a view state version which
   // we want to start getting events at
   Stream<ChangeEnvelop> changes({
+    required String entityName,
     required EntityId id,
     required String name,
     String startAt = '',
@@ -110,32 +113,45 @@ class ClientMessageStore {
     if (startAt != '-1') {
       past = Stream.fromIterable(
         // Make stream from a copy of history to avoid 'Concurrent Modification' exception
-        [...changeHistory(id: id, name: name, startAt: startAt)],
+        [
+          ...changeHistory(
+            entityName: entityName,
+            id: id,
+            name: name,
+            startAt: startAt,
+          ),
+        ],
       );
     } else {
       past = Stream.empty();
     }
 
-    var future = _changes.stream.where((e) => e.key == id && e.name == name);
+    var future = _changes.stream.where(
+      (e) => e.entityName == entityName && e.key == id && e.name == name,
+    );
 
     return Rx.concatEager([past, future]);
   }
 
   Stream<ChangeEnvelop> futureChanges({
+    required String entityName,
     required EntityId id,
     required String name,
   }) {
-    return _changes.stream.where((e) => e.key == id && e.name == name);
+    return _changes.stream.where(
+      (e) => e.entityName == entityName && e.key == id && e.name == name,
+    );
   }
 
   /// Removes stored changes up to a certain version passed.
   /// Changes are removed if their version is LESS or EQUAL to [upToVersion].
   void removeChanges({
+    required String entityName,
     required String id,
     required String name,
     required String upToVersion,
   }) {
-    final key = '$id/$name';
+    final key = '$entityName/$id/$name';
 
     if (!_changeStore.containsKey(key)) {
       logger.fine(
@@ -167,7 +183,7 @@ class ClientMessageStore {
       return;
     }
 
-    final logId = e.sourceId;
+    final logId = '${e.entityName}/${e.key}/${e.name}';
     final log = _changeStore[logId] ?? [];
 
     logger.fine('saving changes $e to $logId...');
@@ -197,7 +213,7 @@ class ClientMessageStore {
   }
 
   // maps actor id to change lod
-  final _changeStore = <EntityId, List<ChangeEnvelop>>{};
+  final _changeStore = <String, List<ChangeEnvelop>>{};
 
   final _changes = StreamController<ChangeEnvelop>.broadcast();
 }

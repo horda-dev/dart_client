@@ -2,6 +2,9 @@ import 'package:horda_client/horda_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class TestQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestEntity';
+
   final userName = EntityValueView<String>('name', subscribe: true);
 
   final threadCount = EntityCounterView('threadCount', subscribe: false);
@@ -18,6 +21,9 @@ class TestQuery extends EntityQuery {
 }
 
 class RefQuery extends EntityQuery {
+  @override
+  String get entityName => 'RefEntity';
+
   final refview = EntityRefView(
     'name',
     query: TestQuery(),
