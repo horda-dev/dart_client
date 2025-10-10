@@ -1,3 +1,7 @@
+## 0.22.0
+
+- **FEAT**: use horda_core 0.15.0
+
 ## 0.21.0
 
 - **BREAKING CHANGE**: entity queries now require an entity name
