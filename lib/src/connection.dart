@@ -336,7 +336,13 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     logger.fine('connecting...');
 
     try {
-      final headers = <String, String>{'apiKey': _apiKey};
+      final headers = <String, String>{
+        // API keys are in base64. We have to strip the padding characters to make it a valid subprotocol name.
+        // Otherwise we won't be able to send it in the subprotocols header.
+        //
+        // Server should restore the padding characters for hash matching.
+        'apiKey': _apiKey.replaceAll('=', ''),
+      };
       final idToken = await system.authProvider?.getFirebaseIdToken();
       if (idToken != null) {
         headers['firebaseIdToken'] = idToken;
