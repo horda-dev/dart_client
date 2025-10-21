@@ -3,11 +3,11 @@ import 'dart:collection';
 import 'dart:math';
 
 import 'package:async/async.dart';
-import 'package:horda_core/horda_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:horda_core/horda_core.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'system.dart';
 
@@ -351,11 +351,15 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
         throw ChannelOverwriteException();
       }
 
-      final newChannel = IOWebSocketChannel.connect(
-        _url,
-        headers: headers,
-        pingInterval: const Duration(seconds: 5),
-        connectTimeout: const Duration(seconds: 5),
+      final newChannel = WebSocketChannel.connect(
+        Uri.parse(_url),
+        protocols: [
+          // WebSocket server expects "horda" subprotocol and will respond with it as the negotiated subprotocol.
+          // If we don't request at least one matching subprotocol name, the client will close connection.
+          // Other subrotocol entries are actually headers: api key, firebase id token, etc.
+          'horda',
+          for (final headerValue in headers.values) headerValue,
+        ],
       );
       _channel = newChannel;
 
@@ -502,7 +506,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
   String _url;
   String _apiKey;
-  IOWebSocketChannel? _channel;
+  WebSocketChannel? _channel;
   Stream<WsMessageBox>? _channelStream;
   StreamSubscription? _sub;
   int _msgId = 0;
