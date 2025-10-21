@@ -388,8 +388,10 @@ class ActorQueryHost {
       return;
     }
 
-    var first = path.first;
-    var child = children[first];
+    final first = path.first;
+
+    // Must use toString explicitly, otherwise child will be null on web platform.
+    final child = children[first.toString()];
 
     if (child == null) {
       throw FluirError('no view host found for query path $path');
