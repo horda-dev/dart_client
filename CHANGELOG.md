@@ -1,3 +1,7 @@
+## 0.23.0
+
+- **FEAT**: support web platform
+
 ## 0.22.0
 
 - **FEAT**: use horda_core 0.15.0
