@@ -1,6 +1,6 @@
 ## 0.23.0
 
-- **FEAT**: support websocket connection on web platform
+- **FEAT**: support WebSocket connection on web platform
 
 ## 0.22.0
 
