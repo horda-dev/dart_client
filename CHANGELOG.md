@@ -1,3 +1,8 @@
+## 0.23.0
+
+- **FEAT**: support WebSocket connection on web platform
+- **FEAT**: use horda_core 0.16.0
+
 ## 0.22.0
 
 - **FEAT**: use horda_core 0.15.0
