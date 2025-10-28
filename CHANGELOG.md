@@ -1,3 +1,7 @@
+## 0.24.0
+
+- **FEAT**: add event factory parameter to callRemote()
+
 ## 0.23.0
 
 - **FEAT**: support WebSocket connection on web platform
