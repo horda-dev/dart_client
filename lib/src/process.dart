@@ -27,10 +27,11 @@ abstract class HordaProcessContext {
 
   void sendRemote(String entityName, String entityId, RemoteCommand cmd);
 
-  Future<RemoteEvent> callRemote(
+  Future<E> callRemote<E extends RemoteEvent>(
     String entityName,
     String entityId,
     RemoteCommand cmd,
+    FromJsonFun<E> fac,
   );
 
   /// Sends a [RemoteEvent] to the server and returns a [FlowResult]
@@ -157,24 +158,24 @@ class HordaProcessElement extends ProxyElement
   }
 
   @override
-  Future<RemoteEvent> callRemote(
+  Future<E> callRemote<E extends RemoteEvent>(
     String entityName,
     String entityId,
     RemoteCommand cmd,
+    FromJsonFun<E> fac,
   ) async {
-    try {
-      logger.info('calling $entityId with $cmd...');
+    logger.info('calling $entityId with $cmd...');
 
-      var event = await system.callRemote(entityName, entityId, cmd);
+    final event = await system.callRemote(
+      entityName,
+      entityId,
+      cmd,
+      fac,
+    );
 
-      logger.info('received $event from $entityId call');
+    logger.info('received $event from $entityId call');
 
-      return event;
-    } on Exception catch (e) {
-      var msg = 'received $e from call $cmd to $entityId';
-      logger.warning(msg);
-      return FluirErrorEvent(msg);
-    }
+    return event;
   }
 
   @override

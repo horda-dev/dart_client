@@ -109,10 +109,11 @@ class HordaClientSystem {
     logger.info('sent remote $cmd to $entityId');
   }
 
-  Future<RemoteEvent> callRemote(
+  Future<E> callRemote<E extends RemoteEvent>(
     String entityName,
     EntityId entityId,
     RemoteCommand cmd,
+    FromJsonFun<E> fac,
   ) async {
     logger.fine('calling remote command $cmd to $entityId...');
     analyticsService?.reportMessage(
@@ -128,6 +129,7 @@ class HordaClientSystem {
       entityName,
       entityId,
       cmd,
+      fac,
       const Duration(seconds: 10),
     );
 

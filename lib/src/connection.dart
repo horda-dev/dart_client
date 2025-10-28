@@ -90,10 +90,11 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   /// [to] - Target entity ID
   /// [cmd] - Command to send
   /// [timeout] - Maximum time to wait for response
-  Future<RemoteEvent> call(
+  Future<E> call<E extends RemoteEvent>(
     String actorName,
     EntityId to,
     RemoteCommand cmd,
+    FromJsonFun<E> fac,
     Duration timeout,
   );
 
@@ -243,10 +244,11 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   }
 
   @override
-  Future<RemoteEvent> call(
+  Future<E> call<E extends RemoteEvent>(
     String actorName,
     EntityId to,
     RemoteCommand cmd,
+    FromJsonFun<E> fac,
     Duration timeout,
   ) async {
     logger.fine('calling $cmd...');
@@ -267,11 +269,19 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     if (res.isOk) {
       final reply = FlowCallReplyOk.fromJson(res.reply);
-      return kMessageFromJson(reply.eventType, reply.event);
+
+      if (reply.eventType != E.toString()) {
+        throw FluirError(
+          'call received unexpected event type: ${reply.eventType}',
+        );
+      }
+
+      return fac(reply.event);
     }
 
     final reply = FlowCallReplyErr.fromJson(res.reply);
-    return FluirErrorEvent(reply.message);
+
+    throw FluirError(reply.message);
   }
 
   @override
