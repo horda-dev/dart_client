@@ -104,7 +104,7 @@ class HordaClientSystem {
     );
 
     try {
-      conn.send(name, id, cmd);
+      conn.sendEntity(name, id, cmd);
     } catch (e) {
       logger.severe('send remote $cmd to $id failed with $e');
       return;
@@ -129,7 +129,7 @@ class HordaClientSystem {
       ),
     );
 
-    final res = await conn.call(
+    final res = await conn.callEntity(
       name,
       id,
       cmd,

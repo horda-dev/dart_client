@@ -82,7 +82,7 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   /// [actorName] - Entity type name
   /// [to] - Target entity ID
   /// [cmd] - Command to send
-  Future<void> send(String actorName, EntityId to, RemoteCommand cmd);
+  Future<void> sendEntity(String actorName, EntityId to, RemoteCommand cmd);
 
   /// Calls a command on an entity and waits for the response
   ///
@@ -90,7 +90,7 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   /// [to] - Target entity ID
   /// [cmd] - Command to send
   /// [timeout] - Maximum time to wait for response
-  Future<E> call<E extends RemoteEvent>(
+  Future<E> callEntity<E extends RemoteEvent>(
     String actorName,
     EntityId to,
     RemoteCommand cmd,
@@ -227,10 +227,14 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   }
 
   @override
-  Future<void> send(String actorName, EntityId to, RemoteCommand cmd) async {
+  Future<void> sendEntity(
+    String entityName,
+    EntityId to,
+    RemoteCommand cmd,
+  ) async {
     logger.fine('sending $cmd... to $to');
 
-    var msg = SendCommandWsMsg(actorName, to, cmd);
+    var msg = SendCommandWsMsg(entityName, to, cmd);
 
     var boxId = _send(msg);
     var res = await _boxStream(boxId).map((box) => box.msg).first;
@@ -244,8 +248,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   }
 
   @override
-  Future<E> call<E extends RemoteEvent>(
-    String actorName,
+  Future<E> callEntity<E extends RemoteEvent>(
+    String entityName,
     EntityId to,
     RemoteCommand cmd,
     FromJsonFun<E> fac,
@@ -253,7 +257,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   ) async {
     logger.fine('calling $cmd...');
 
-    final msg = CallCommandWsMsg(actorName, to, cmd);
+    final msg = CallCommandWsMsg(entityName, to, cmd);
 
     final boxId = _send(msg);
     final res = await _boxStream(
