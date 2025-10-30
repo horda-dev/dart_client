@@ -1,6 +1,15 @@
 ## 0.24.0
 
-- **FEAT**: add event factory parameter to callRemote()
+- **FEAT**: add `RemoteMessageExtensions` on `BuildContext` with methods for entity communication:
+  - `dispatchEvent()` - dispatch remote event and await FlowResult
+  - `sendEntity()` - send command to entity (fire-and-forget)
+  - `callEntity()` - send command and await typed response event with factory function
+- **FEAT**: add event factory parameter to call methods for type-safe response handling
+- **BREAKING CHANGE**: `callRemote()`, `callEntity()` and related methods now throw `FluirError` on error instead of returning error events
+- **BREAKING CHANGE**: rename `MessageExtensions` to `LocalMessageExtensions`
+- **BREAKING CHANGE**: rename `dispatch()` to `dispatchLocal()` in `LocalMessageExtensions`
+- **BREAKING CHANGE**: rename `sendRemote()` to `sendEntity()` with named parameters
+- **BREAKING CHANGE**: rename `callRemote()` to `callEntity()` with named parameters
 
 ## 0.23.0
 
