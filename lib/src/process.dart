@@ -25,14 +25,18 @@ abstract class HordaProcessContext {
 
   void sendLocalAfter(Duration delay, LocalCommand cmd);
 
-  void sendRemote(String entityName, String entityId, RemoteCommand cmd);
+  void sendEntity({
+    required String name,
+    required String id,
+    required RemoteCommand cmd,
+  });
 
-  Future<E> callRemote<E extends RemoteEvent>(
-    String entityName,
-    String entityId,
-    RemoteCommand cmd,
-    FromJsonFun<E> fac,
-  );
+  Future<E> callEntity<E extends RemoteEvent>({
+    required String name,
+    required String id,
+    required RemoteCommand cmd,
+    required FromJsonFun<E> fac,
+  });
 
   /// Sends a [RemoteEvent] to the server and returns a [FlowResult]
   /// after the event is handled by [Flow].
@@ -153,27 +157,35 @@ class HordaProcessElement extends ProxyElement
   }
 
   @override
-  void sendRemote(String entityName, String entityId, RemoteCommand cmd) {
-    system.sendRemote(entityName, entityId, cmd);
+  void sendEntity({
+    required String name,
+    required String id,
+    required RemoteCommand cmd,
+  }) {
+    system.sendEntity(
+      name: name,
+      id: id,
+      cmd: cmd,
+    );
   }
 
   @override
-  Future<E> callRemote<E extends RemoteEvent>(
-    String entityName,
-    String entityId,
-    RemoteCommand cmd,
-    FromJsonFun<E> fac,
-  ) async {
-    logger.info('calling $entityId with $cmd...');
+  Future<E> callEntity<E extends RemoteEvent>({
+    required String name,
+    required String id,
+    required RemoteCommand cmd,
+    required FromJsonFun<E> fac,
+  }) async {
+    logger.info('calling $id with $cmd...');
 
-    final event = await system.callRemote(
-      entityName,
-      entityId,
-      cmd,
-      fac,
+    final event = await system.callEntity(
+      name: name,
+      id: id,
+      cmd: cmd,
+      fac: fac,
     );
 
-    logger.info('received $event from $entityId call');
+    logger.info('received $event from $id call');
 
     return event;
   }

@@ -47,11 +47,114 @@ extension HordaModelExtensions on BuildContext {
 ///
 /// Provides methods to dispatch local messages that can be handled by
 /// notification listeners and analytics services.
-extension MessageExtensions on BuildContext {
-  void dispatch(LocalMessage msg) {
+extension LocalMessageExtensions on BuildContext {
+  void dispatchLocal(LocalMessage msg) {
     dispatchNotification(msg);
     HordaSystemProvider.of(this).analyticsService?.reportMessage(msg);
     Logger('Fluir').info('${widget.runtimeType} dispatched $msg');
+  }
+}
+
+/// Extension for sending remote messages to the Horda backend.
+///
+/// Provides convenient [BuildContext] methods for sending commands and events
+/// to the Horda backend. These methods enable client-server communication with
+/// type-safe response handling.
+extension RemoteMessageExtensions on BuildContext {
+  /// Dispatches a remote event and waits for the backend flow processing result.
+  ///
+  /// Sends [event] to the Horda backend where it will be processed by the
+  /// appropriate business process flow. Returns a [FlowResult] indicating
+  /// success or failure of the backend processing.
+  ///
+  /// This is useful when you need confirmation that the backend has processed
+  /// the event, but don't expect a typed response event.
+  ///
+  /// Example:
+  /// ```dart
+  /// final result = await context.dispatchEvent(MyEvent(...));
+  /// if (result.isOk) {
+  ///   // Event was processed successfully
+  /// }
+  /// ```
+  Future<FlowResult> dispatchEvent(RemoteEvent event) {
+    return HordaSystemProvider.of(this).dispatchEvent(event);
+  }
+
+  /// Sends a command to an entity without waiting for a response.
+  ///
+  /// Fire-and-forget method that sends [cmd] to the entity identified by
+  /// [name] and [id]. Use this when you don't need to wait for the result
+  /// or response from the backend.
+  ///
+  /// Parameters:
+  /// - [name] - The entity type name as registered on the backend
+  /// - [id] - The unique identifier of the target entity
+  /// - [cmd] - The command to send to the entity
+  ///
+  /// Example:
+  /// ```dart
+  /// context.sendEntity(
+  ///   name: 'user',
+  ///   id: userId,
+  ///   cmd: UpdateProfileCommand(firstName: 'John'),
+  /// );
+  /// ```
+  void sendEntity({
+    required String name,
+    required EntityId id,
+    required RemoteCommand cmd,
+  }) {
+    HordaSystemProvider.of(this).sendEntity(
+      name: name,
+      id: id,
+      cmd: cmd,
+    );
+  }
+
+  /// Sends a command to an entity and waits for a typed response event.
+  ///
+  /// Sends [cmd] to the entity identified by [name] and [id], then waits
+  /// for the backend to respond with an event of type [E]. The [fac] factory
+  /// function is used to deserialize the JSON response into the expected
+  /// event type.
+  ///
+  /// Throws [FluirError] if:
+  /// - The backend returns an error response
+  /// - The response event type doesn't match the expected type [E]
+  ///
+  /// Parameters:
+  /// - [name] - The entity type name as registered on the backend
+  /// - [id] - The unique identifier of the target entity
+  /// - [cmd] - The command to send to the entity
+  /// - [fac] - Factory function to deserialize the JSON response into type [E]
+  ///
+  /// Example:
+  /// ```dart
+  /// try {
+  ///   final event = await context.callEntity<ProfileUpdatedEvent>(
+  ///     name: 'user',
+  ///     id: userId,
+  ///     cmd: UpdateProfileCommand(firstName: 'John'),
+  ///     fac: ProfileUpdatedEvent.fromJson,
+  ///   );
+  ///   // Handle the response event
+  /// } on FluirError catch (e) {
+  ///   // Handle error
+  /// }
+  /// ```
+  Future<E> callEntity<E extends RemoteEvent>({
+    required String name,
+    required EntityId id,
+    required RemoteCommand cmd,
+    required FromJsonFun<E> fac,
+  }) {
+    return HordaSystemProvider.of(this).callEntity(
+      name: name,
+      id: id,
+      cmd: cmd,
+      fac: fac,
+    );
   }
 }
 
