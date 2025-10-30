@@ -1,3 +1,8 @@
+## 0.25.0
+
+- **BREAKING CHANGE**: rename `FlowResult` to `ProcessResult`
+- **FEAT**: use horda_core 0.17.0
+
 ## 0.24.0
 
 - **FEAT**: add `RemoteMessageExtensions` on `BuildContext` with methods for entity communication:
