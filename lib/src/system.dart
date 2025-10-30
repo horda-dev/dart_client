@@ -88,55 +88,61 @@ class HordaClientSystem {
     }
   }
 
-  void sendRemote(String entityName, EntityId entityId, RemoteCommand cmd) {
-    logger.fine('sending remote command $cmd to $entityId...');
+  void sendEntity({
+    required String name,
+    required EntityId id,
+    required RemoteCommand cmd,
+  }) {
+    logger.fine('sending remote command $cmd to $id...');
     analyticsService?.reportMessage(
       cmd,
       SendCallLabels(
         senderId: _senderId,
-        entityId: entityId,
-        entityName: entityName,
+        entityId: id,
+        entityName: name,
       ),
     );
 
     try {
-      conn.send(entityName, entityId, cmd);
+      conn.sendEntity(name, id, cmd);
     } catch (e) {
-      logger.severe('send remote $cmd to $entityId failed with $e');
+      logger.severe('send remote $cmd to $id failed with $e');
       return;
     }
 
-    logger.info('sent remote $cmd to $entityId');
+    logger.info('sent remote $cmd to $id');
   }
 
-  Future<RemoteEvent> callRemote(
-    String entityName,
-    EntityId entityId,
-    RemoteCommand cmd,
-  ) async {
-    logger.fine('calling remote command $cmd to $entityId...');
+  Future<E> callEntity<E extends RemoteEvent>({
+    required String name,
+    required EntityId id,
+    required RemoteCommand cmd,
+    required FromJsonFun<E> fac,
+  }) async {
+    logger.fine('calling remote command $cmd to $id...');
     analyticsService?.reportMessage(
       cmd,
       SendCallLabels(
         senderId: _senderId,
-        entityId: entityId,
-        entityName: entityName,
+        entityId: id,
+        entityName: name,
       ),
     );
 
-    final res = await conn.call(
-      entityName,
-      entityId,
+    final res = await conn.callEntity(
+      name,
+      id,
       cmd,
+      fac,
       const Duration(seconds: 10),
     );
 
-    logger.info('called command $cmd to $entityId');
+    logger.info('called command $cmd to $id');
 
     return res;
   }
 
-  /// Sends a [RemoteEvent] to the server and returns a [FlowResult2]
+  /// Sends a [RemoteEvent] to the server and returns a [FlowResult]
   /// after the event is handled by [Flow].
   Future<FlowResult> dispatchEvent(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
