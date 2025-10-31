@@ -397,7 +397,7 @@ class CounterViewModel {
     : system = HordaSystemProvider.of(context);
 
   Future<void> increment() async {
-    final result = await system.dispatchEvent(
+    final result = await system.runProcess(
       IncrementCounterRequested(counterId: counterId, amount: 1),
     );
     
@@ -410,7 +410,7 @@ class CounterViewModel {
   }
   
   Future<void> createCounter(String name) async {
-    await system.dispatchEvent(
+    await system.runProcess(
       CreateCounterRequested(name: name),
     );
   }
@@ -456,5 +456,5 @@ Then import and use your backend events:
 import 'package:your_backend_package/events.dart';
 
 // Now you can use your custom events
-await system.dispatchEvent(YourCustomEvent(data: 'example'));
+await system.runProcess(YourCustomEvent(data: 'example'));
 ```

@@ -102,7 +102,7 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   ///
   /// [event] - Event to dispatch
   /// [timeout] - Maximum time to wait for completion
-  Future<ProcessResult> dispatchEvent(RemoteEvent event, Duration timeout);
+  Future<ProcessResult> runProcess(RemoteEvent event, Duration timeout);
 
   /// Subscribes to real-time updates for entity views
   ///
@@ -289,7 +289,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   }
 
   @override
-  Future<ProcessResult> dispatchEvent(
+  Future<ProcessResult> runProcess(
     RemoteEvent event,
     Duration timeout,
   ) async {

@@ -72,13 +72,13 @@ extension RemoteMessageExtensions on BuildContext {
   ///
   /// Example:
   /// ```dart
-  /// final result = await context.dispatchEvent(MyEvent(...));
+  /// final result = await context.runProcess(MyEvent(...));
   /// if (result.isOk) {
   ///   // Event was processed successfully
   /// }
   /// ```
-  Future<ProcessResult> dispatchEvent(RemoteEvent event) {
-    return HordaSystemProvider.of(this).dispatchEvent(event);
+  Future<ProcessResult> runProcess(RemoteEvent event) {
+    return HordaSystemProvider.of(this).runProcess(event);
   }
 
   /// Sends a command to an entity without waiting for a response.
