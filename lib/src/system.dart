@@ -142,13 +142,13 @@ class HordaClientSystem {
     return res;
   }
 
-  /// Sends a [RemoteEvent] to the server and returns a [FlowResult]
+  /// Sends a [RemoteEvent] to the server and returns a [ProcessResult]
   /// after the event is handled by [Flow].
-  Future<FlowResult> dispatchEvent(RemoteEvent event) async {
+  Future<ProcessResult> runProcess(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
     analyticsService?.reportMessage(event, DispatchLabels(senderId: _senderId));
 
-    final res = await conn.dispatchEvent(event, const Duration(seconds: 10));
+    final res = await conn.runProcess(event, const Duration(seconds: 10));
 
     logger.info('dispatched event $event');
 

@@ -38,9 +38,9 @@ abstract class HordaProcessContext {
     required FromJsonFun<E> fac,
   });
 
-  /// Sends a [RemoteEvent] to the server and returns a [FlowResult]
+  /// Sends a [RemoteEvent] to the server and returns a [ProcessResult]
   /// after the event is handled by [Flow].
-  Future<FlowResult> dispatchEvent(RemoteEvent event);
+  Future<ProcessResult> runProcess(RemoteEvent event);
 }
 
 abstract class HordaProcess extends ProxyWidget
@@ -191,11 +191,11 @@ class HordaProcessElement extends ProxyElement
   }
 
   @override
-  Future<FlowResult> dispatchEvent(RemoteEvent event) async {
+  Future<ProcessResult> runProcess(RemoteEvent event) async {
     try {
       logger.info('dispatching $event...');
 
-      final result = await system.dispatchEvent(event);
+      final result = await system.runProcess(event);
 
       logger.info('received $result from dispatching $event');
 
@@ -205,7 +205,7 @@ class HordaProcessElement extends ProxyElement
 
       logger.warning(msg);
 
-      return FlowResult.error(msg);
+      return ProcessResult.error(msg);
     }
   }
 

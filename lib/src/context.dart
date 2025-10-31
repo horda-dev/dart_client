@@ -64,7 +64,7 @@ extension RemoteMessageExtensions on BuildContext {
   /// Dispatches a remote event and waits for the backend flow processing result.
   ///
   /// Sends [event] to the Horda backend where it will be processed by the
-  /// appropriate business process flow. Returns a [FlowResult] indicating
+  /// appropriate business process flow. Returns a [ProcessResult] indicating
   /// success or failure of the backend processing.
   ///
   /// This is useful when you need confirmation that the backend has processed
@@ -72,13 +72,13 @@ extension RemoteMessageExtensions on BuildContext {
   ///
   /// Example:
   /// ```dart
-  /// final result = await context.dispatchEvent(MyEvent(...));
-  /// if (result.isOk) {
-  ///   // Event was processed successfully
+  /// final result = await context.runProcess(MyEvent(...));
+  /// if (result.isError) {
+  ///   // Event was processed with an error
   /// }
   /// ```
-  Future<FlowResult> dispatchEvent(RemoteEvent event) {
-    return HordaSystemProvider.of(this).dispatchEvent(event);
+  Future<ProcessResult> runProcess(RemoteEvent event) {
+    return HordaSystemProvider.of(this).runProcess(event);
   }
 
   /// Sends a command to an entity without waiting for a response.
