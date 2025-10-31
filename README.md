@@ -390,17 +390,16 @@ Send events to trigger backend business processes:
 
 ```dart
 class CounterViewModel {
-  final HordaClientSystem system;
+  final BuildContext context;
   final String counterId;
-  
-  CounterViewModel(BuildContext context, this.counterId) 
-    : system = HordaSystemProvider.of(context);
+
+  CounterViewModel(this.context, this.counterId);
 
   Future<void> increment() async {
-    final result = await system.runProcess(
+    final result = await context.runProcess(
       IncrementCounterRequested(counterId: counterId, amount: 1),
     );
-    
+
     // Handle result
     if (result.isError) {
       print('Error: ${result.error}');
@@ -408,9 +407,9 @@ class CounterViewModel {
       print('Counter incremented successfully');
     }
   }
-  
+
   Future<void> createCounter(String name) async {
-    await system.runProcess(
+    await context.runProcess(
       CreateCounterRequested(name: name),
     );
   }
@@ -423,13 +422,18 @@ Send commands directly to specific entities:
 
 ```dart
 // Send command without waiting for response
-await system.sendRemote('Counter', counterId, IncrementCommand(by: 1));
+await context.sendEntity(
+  name: 'Counter',
+  id: counterId,
+  cmd: IncrementCounter(by: 1),
+);
 
 // Call command and wait for response
-final response = await system.callRemote(
-  'Counter', 
-  counterId, 
-  GetCounterStatusCommand(),
+final response = await context.callEntity(
+  name: 'Counter',
+  id: counterId,
+  cmd: IncrementCounter(by: 1),
+  fac: CounterIncremented.fromJson,
 );
 ```
 
@@ -456,5 +460,5 @@ Then import and use your backend events:
 import 'package:your_backend_package/events.dart';
 
 // Now you can use your custom events
-await system.runProcess(YourCustomEvent(data: 'example'));
+await context.runProcess(YourCustomEvent(data: 'example'));
 ```
