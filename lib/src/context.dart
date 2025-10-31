@@ -73,8 +73,8 @@ extension RemoteMessageExtensions on BuildContext {
   /// Example:
   /// ```dart
   /// final result = await context.runProcess(MyEvent(...));
-  /// if (result.isOk) {
-  ///   // Event was processed successfully
+  /// if (result.isError) {
+  ///   // Event was processed with an error
   /// }
   /// ```
   Future<ProcessResult> runProcess(RemoteEvent event) {

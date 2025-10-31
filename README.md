@@ -21,7 +21,7 @@ Connect your Flutter app to backends built with the Horda platform.
   - [Working with Lists](#working-with-lists)
   - [Value Change Handlers](#value-change-handlers)
 - [Backend Integration](#backend-integration)
-  - [Dispatch Events](#dispatch-events)
+  - [Run Processes](#run-processes)
   - [Send Commands](#send-commands)
   - [Backend Package Setup](#backend-package-setup)
 
@@ -384,7 +384,7 @@ class _CounterWidgetState extends State<CounterWidget>
 
 ## Backend Integration
 
-### Dispatch Events
+### Run Processes
 
 Send events to trigger backend business processes:
 
@@ -402,10 +402,10 @@ class CounterViewModel {
     );
     
     // Handle result
-    if (result.isSuccess) {
-      print('Counter incremented successfully');
-    } else {
+    if (result.isError) {
       print('Error: ${result.error}');
+    } else {
+      print('Counter incremented successfully');
     }
   }
   
