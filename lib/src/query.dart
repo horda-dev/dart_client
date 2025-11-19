@@ -409,22 +409,27 @@ class ActorQueryHost {
     this.actorId = actorId;
 
     try {
-      final res = await system.query(
+      // Use atomic query and subscribe operation
+      // This prevents race conditions between query result and subscription start
+      final (:result, :alreadySubscribed) = await system.queryAndSubscribe(
         entityId: actorId,
-        name: query.name,
         def: qdef,
+        subs: subscriptions(),
       );
 
-      logger.finer('$actorId: got query result: ${res.toJson()}');
+      logger.finer('$actorId: got query result: ${result.toJson()}');
 
       if (_isStopped) {
         logger.info('$actorId: run stopped');
         return;
       }
 
-      attach(actorId, res);
+      // Attach first to set up change stream listeners
+      attach(actorId, result);
 
-      await subscribe();
+      // Now publish empty change envelopes for already-subscribed views
+      // The listeners are ready to receive them
+      system.publishEmptyChanges(alreadySubscribed);
 
       logger.info('$actorId: ran');
     } catch (e) {

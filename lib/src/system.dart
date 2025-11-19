@@ -159,12 +159,76 @@ class HordaClientSystem {
     messageStore.publishChange(env);
   }
 
+  /// Publishes empty change envelopes for a list of view subscriptions.
+  ///
+  /// Empty change envelopes are used to signal that a view subscription is ready
+  /// without any actual data changes. This is necessary when a view is already
+  /// subscribed to by another host - the new host needs to receive an empty
+  /// envelope to mark itself as "ready" without waiting for actual server changes.
+  ///
+  /// This method should be called AFTER ActorViewHost.attach() has set up the
+  /// change stream listeners, ensuring the empty envelopes are received.
+  ///
+  /// [subs] - List of view subscriptions to publish empty envelopes for
+  void publishEmptyChanges(Iterable<ActorViewSub> subs) {
+    for (final sub in subs) {
+      logger.info('Publishing empty change envelope for $sub');
+      publishChange(
+        ChangeEnvelop.empty(
+          entityName: sub.entityName,
+          key: sub.id,
+          name: sub.name,
+        ),
+      );
+    }
+  }
+
   Future<QueryResult> query({
     required String entityId,
-    required String name,
     required QueryDef def,
   }) {
-    return conn.query(actorId: entityId, name: name, def: def);
+    return conn.query(actorId: entityId, def: def);
+  }
+
+  Future<({QueryResult result, List<ActorViewSub> alreadySubscribed})>
+  queryAndSubscribe({
+    required String entityId,
+    required QueryDef def,
+    required Iterable<ActorViewSub> subs,
+  }) async {
+    logger.fine('$entityId: atomic query and subscribe...');
+
+    // Filter subscriptions using reference counting
+    final readyToSub = _incViewSubCount(subs);
+    final alreadySubbed = subs.toSet().difference(readyToSub.toSet());
+
+    if (readyToSub.isEmpty) {
+      logger.fine('No views need subscription, falling back to regular query');
+      // All views are already subscribed, just do a regular query
+      final result = await conn.query(actorId: entityId, def: def);
+      return (result: result, alreadySubscribed: alreadySubbed.toList());
+    }
+
+    logger.fine('Ready to sub: $readyToSub');
+
+    try {
+      final result = await conn.queryAndSubscribe(
+        actorId: entityId,
+        def: def,
+        subs: readyToSub.toList(),
+      );
+
+      logger.info('$entityId: atomic query and subscribe completed');
+      return (result: result, alreadySubscribed: alreadySubbed.toList());
+    } catch (e) {
+      logger.severe('query and subscribe error $e');
+
+      // Rollback subscription counts on error
+      logger.warning('Decrementing host count due to error...');
+      _decViewSubCount(subs);
+
+      rethrow;
+    }
   }
 
   Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
