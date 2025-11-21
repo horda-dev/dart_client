@@ -411,10 +411,9 @@ class ActorQueryHost {
     try {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
-      final (:result, :alreadySubscribed) = await system.queryAndSubscribe(
+      final result = await system.queryAndSubscribe(
         entityId: actorId,
         def: qdef,
-        subs: subscriptions(),
       );
 
       logger.finer('$actorId: got query result: ${result.toJson()}');
