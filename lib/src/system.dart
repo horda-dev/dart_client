@@ -43,6 +43,18 @@ class HordaClientSystem {
     messageStore = ClientMessageStore(this, conn);
   }
 
+  HordaClientSystem._withConnection({
+    required this.conn,
+    this.authProvider,
+    this.analyticsService,
+    this.errorTrackingService,
+  }) : authState = ValueNotifier<HordaAuthState>(
+         authProvider == null ? AuthStateIncognito() : AuthStateValidating(),
+       ) {
+    logger = Logger('Fluir.System');
+    messageStore = ClientMessageStore(this, conn);
+  }
+
   final AuthProvider? authProvider;
 
   final AnalyticsService? analyticsService;
@@ -430,6 +442,16 @@ class TestHordaClientSystem extends HordaClientSystem {
     super.apiKey = '',
     super.authProvider,
   });
+
+  TestHordaClientSystem.withConnection({
+    required super.conn,
+  }) : super._withConnection();
+
+  /// Exposes the view subscription count map for testing purposes.
+  ///
+  /// Returns an unmodifiable map to prevent external modification while
+  /// allowing tests to verify reference counting behavior.
+  Map<String, int> get viewSubCount => Map.unmodifiable(_viewSubCount);
 
   Future<void> start() async {
     // noop
