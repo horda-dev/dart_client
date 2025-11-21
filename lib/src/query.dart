@@ -426,9 +426,9 @@ class ActorQueryHost {
       // Attach first to set up change stream listeners
       attach(actorId, result);
 
-      // Now publish empty change envelopes for already-subscribed views
-      // The listeners are ready to receive them
-      system.publishEmptyChanges(alreadySubscribed);
+      // Now collect all subscriptions and track them.
+      // This will publish empty change envelopes for already-subscribed views.
+      system.trackViewSubscriptions(subscriptions());
 
       logger.info('$actorId: ran');
     } catch (e) {
