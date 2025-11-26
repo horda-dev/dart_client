@@ -409,22 +409,26 @@ class ActorQueryHost {
     this.actorId = actorId;
 
     try {
-      final res = await system.query(
+      // Use atomic query and subscribe operation
+      // This prevents race conditions between query result and subscription start
+      final result = await system.queryAndSubscribe(
         entityId: actorId,
-        name: query.name,
         def: qdef,
       );
 
-      logger.finer('$actorId: got query result: ${res.toJson()}');
+      logger.finer('$actorId: got query result: ${result.toJson()}');
 
       if (_isStopped) {
         logger.info('$actorId: run stopped');
         return;
       }
 
-      attach(actorId, res);
+      // Attach first to set up change stream listeners
+      attach(actorId, result);
 
-      await subscribe();
+      // Now collect all subscriptions and track them.
+      // This will publish empty change envelopes for already-subscribed views.
+      system.trackViewSubscriptions(subscriptions());
 
       logger.info('$actorId: ran');
     } catch (e) {
@@ -432,14 +436,6 @@ class ActorQueryHost {
 
       logger.severe('$actorId: query ran with error: $e');
     }
-  }
-
-  Future<void> subscribe() async {
-    logger.fine('$actorId: subscribing...');
-
-    await system.subscribeViews(subscriptions());
-
-    logger.info('$actorId: subscribed');
   }
 
   Future<void> unsubscribe() async {
@@ -1015,15 +1011,8 @@ class ActorValueViewHost<T> extends ActorViewHost {
     }
 
     if (view.subscribe) {
-      final latestChangeId =
-          system.latestStoredChangeIdOf(
-            entityName: entityName,
-            id: actorId!,
-            name: view.name,
-          ) ??
-          changeId;
       return [
-        ActorViewSub(entityName, actorId!, view.name, latestChangeId),
+        ActorViewSub(entityName, actorId!, view.name),
       ];
     } else {
       return [];
@@ -1086,15 +1075,8 @@ class ActorCounterViewHost extends ActorViewHost {
     }
 
     if (view.subscribe) {
-      final latestChangeId =
-          system.latestStoredChangeIdOf(
-            entityName: entityName,
-            id: actorId!,
-            name: view.name,
-          ) ??
-          changeId;
       return [
-        ActorViewSub(entityName, actorId!, view.name, latestChangeId),
+        ActorViewSub(entityName, actorId!, view.name),
       ];
     } else {
       return [];
@@ -1257,14 +1239,7 @@ class ActorRefViewHost extends ActorViewHost {
     final subs = <ActorViewSub>[];
 
     if (view.subscribe) {
-      final latestChangeId =
-          system.latestStoredChangeIdOf(
-            entityName: entityName,
-            id: actorId!,
-            name: view.name,
-          ) ??
-          changeId;
-      subs.add(ActorViewSub(entityName, actorId!, view.name, latestChangeId));
+      subs.add(ActorViewSub(entityName, actorId!, view.name));
     }
 
     if (refId != null) {
@@ -1593,16 +1568,8 @@ class ActorListViewHost extends ActorViewHost {
     final subs = <ActorViewSub>[];
 
     if (view.subscribe) {
-      final latestChangeId =
-          system.latestStoredChangeIdOf(
-            entityName: entityName,
-            id: actorId!,
-            name: view.name,
-          ) ??
-          changeId;
-
       subs.add(
-        ActorViewSub(entityName, actorId!, view.name, latestChangeId),
+        ActorViewSub(entityName, actorId!, view.name),
       );
     }
 
@@ -2234,15 +2201,8 @@ class AttributesHost {
   Iterable<ActorViewSub> subscriptions() {
     final viewSubs = <ActorViewSub>[];
 
-    for (final MapEntry(key: name, value: attr) in _attrs.entries) {
-      final latestChangeId =
-          system.latestStoredChangeIdOf(
-            entityName: entityName,
-            id: id!,
-            name: viewName,
-          ) ??
-          attr['version'] as String;
-      viewSubs.add(ActorViewSub.attr(id!, name, latestChangeId));
+    for (final MapEntry(key: name) in _attrs.entries) {
+      viewSubs.add(ActorViewSub.attr(id!, name));
     }
 
     return viewSubs;

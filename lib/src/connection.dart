@@ -69,11 +69,22 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   /// Executes a query against an entity's views
   ///
   /// [actorId] - ID of the entity to query
-  /// [name] - Name of the query
   /// [def] - Query definition specifying which views to retrieve
   Future<QueryResult> query({
     required String actorId,
-    required String name,
+    required QueryDef def,
+  });
+
+  /// Executes an atomic query and subscribe operation
+  ///
+  /// Combines query execution and view subscription into a single atomic operation,
+  /// preventing race conditions between query result and subscription start.
+  ///
+  /// [actorId] - ID of the entity to query
+  /// [def] - Query definition specifying which views to retrieve
+  /// [subs] - View subscriptions to establish
+  Future<QueryResult> queryAndSubscribe({
+    required String actorId,
     required QueryDef def,
   });
 
@@ -210,7 +221,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   @override
   Future<QueryResult> query({
     required String actorId,
-    required String name,
     required QueryDef def,
   }) async {
     var msg = QueryWsMsg(actorId: actorId, def: def);
@@ -222,6 +232,31 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       logger.severe('query failed with $res');
       throw FluirError(res.toString());
     }
+
+    return res.result;
+  }
+
+  @override
+  Future<QueryResult> queryAndSubscribe({
+    required String actorId,
+    required QueryDef def,
+  }) async {
+    logger.fine('$actorId: atomic query and subscribe...');
+
+    final msg = QueryAndSubscribeWsMsg(
+      actorId: actorId,
+      def: def,
+    );
+
+    final boxId = _send(msg);
+    final res = await _boxStream(boxId).map((box) => box.msg).first;
+
+    if (res is! QueryResultWsMsg) {
+      logger.severe('query and subscribe failed with $res');
+      throw FluirError(res.toString());
+    }
+
+    logger.info('$actorId: atomic query and subscribe completed');
 
     return res.result;
   }

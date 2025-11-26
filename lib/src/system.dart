@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'connection.dart';
 import 'message_store.dart';
 import 'provider.dart';
+import 'query.dart';
 
 part 'system.g.dart';
 
@@ -39,6 +40,18 @@ class HordaClientSystem {
        ) {
     logger = Logger('Fluir.System');
     conn = WebSocketConnection(this, url, apiKey);
+    messageStore = ClientMessageStore(this, conn);
+  }
+
+  HordaClientSystem._withConnection({
+    required this.conn,
+    this.authProvider,
+    this.analyticsService,
+    this.errorTrackingService,
+  }) : authState = ValueNotifier<HordaAuthState>(
+         authProvider == null ? AuthStateIncognito() : AuthStateValidating(),
+       ) {
+    logger = Logger('Fluir.System');
     messageStore = ClientMessageStore(this, conn);
   }
 
@@ -159,12 +172,59 @@ class HordaClientSystem {
     messageStore.publishChange(env);
   }
 
+  /// Tracks subscriptions that were created by the server during atomic query+subscribe.
+  ///
+  /// This method increments reference counts for all provided subscriptions and publishes
+  /// empty change envelopes for views that were already subscribed by other hosts.
+  /// Unlike [subscribeViews], this does NOT call the server since the subscriptions
+  /// were already created atomically during the query operation.
+  ///
+  /// This should be called AFTER [ActorViewHost.attach], when [ActorViewHost] has set up change stream listeners.
+  ///
+  /// [subs] - Subscriptions collected from [ActorQueryHost] after attach
+  void trackViewSubscriptions(Iterable<ActorViewSub> subs) {
+    final readyToSub = _incViewSubCount(subs);
+    final alreadySubscribed = subs.toSet().difference(readyToSub.toSet());
+
+    for (final sub in alreadySubscribed) {
+      logger.info(
+        'View $sub was already subscribed, publishing empty change envelope',
+      );
+      publishChange(
+        ChangeEnvelop.empty(
+          entityName: sub.entityName,
+          key: sub.id,
+          name: sub.name,
+        ),
+      );
+    }
+  }
+
   Future<QueryResult> query({
     required String entityId,
-    required String name,
     required QueryDef def,
   }) {
-    return conn.query(actorId: entityId, name: name, def: def);
+    return conn.query(actorId: entityId, def: def);
+  }
+
+  Future<QueryResult> queryAndSubscribe({
+    required String entityId,
+    required QueryDef def,
+  }) async {
+    logger.fine('$entityId: atomic query and subscribe...');
+
+    try {
+      final result = await conn.queryAndSubscribe(
+        actorId: entityId,
+        def: def,
+      );
+
+      logger.info('$entityId: atomic query and subscribe completed');
+      return result;
+    } catch (e) {
+      logger.severe('query and subscribe error $e');
+      rethrow;
+    }
   }
 
   Future<void> subscribeViews(Iterable<ActorViewSub> subs) async {
@@ -382,6 +442,16 @@ class TestHordaClientSystem extends HordaClientSystem {
     super.apiKey = '',
     super.authProvider,
   });
+
+  TestHordaClientSystem.withConnection({
+    required super.conn,
+  }) : super._withConnection();
+
+  /// Exposes the view subscription count map for testing purposes.
+  ///
+  /// Returns an unmodifiable map to prevent external modification while
+  /// allowing tests to verify reference counting behavior.
+  Map<String, int> get viewSubCount => Map.unmodifiable(_viewSubCount);
 
   Future<void> start() async {
     // noop
