@@ -1,3 +1,9 @@
+## 0.26.0
+
+- **FEAT**: queries now use atomic `queryAndSubscribe()` operation to prevent the change id gap between the query result and subscription start
+- **FEAT**: use horda_core 0.18.0
+- **BREAKING CHANGE**: remove `name` parameter from `HordaClientSystem.query()` method signature
+
 ## 0.25.0
 
 - **BREAKING CHANGE**: rename `FlowResult` to `ProcessResult`
