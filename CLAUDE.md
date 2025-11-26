@@ -57,6 +57,31 @@ dart analyze
 dart format .
 ```
 
+## Versioning and Changelog
+
+### Updating the Changelog
+
+When updating `CHANGELOG.md` for a new release:
+
+1. **Check `.pubignore`** - Review the `.pubignore` file to identify files excluded from publication
+2. **Exclude unpublished changes** - Do NOT document changes to files listed in `.pubignore` in the changelog, as these changes won't affect published users
+3. **Current exclusions** (as of this writing):
+   - `CLAUDE.md` - Internal documentation for Claude Code (not published to pub.dev)
+4. **Focus on public API** - Only document changes that affect the published package and its users
+
+Example: Adding or modifying `CLAUDE.md` should not appear in the changelog since it's excluded from publication.
+
+### Version Bumping
+
+Follow semantic versioning (semver):
+- **PATCH** (0.0.x): Bug fixes, documentation updates (published files only)
+- **MINOR** (0.x.0): New features, deprecated APIs (backward compatible)
+- **MAJOR** (x.0.0): Breaking changes to public API
+
+Update both:
+- `pubspec.yaml` - `version:` field
+- `CHANGELOG.md` - Add new section at the top with version number and changes
+
 ## Architecture
 
 ### Core Concepts
