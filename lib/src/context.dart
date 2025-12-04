@@ -600,7 +600,8 @@ class _Builder<Q extends EntityQuery> {
       throw FluirError('index $index is out of bounds for ${list.debugId}');
     }
 
-    var itemId = list.items.elementAt(index);
+    var listItem = list.items.elementAt(index);
+    var itemId = listItem.value;
     newPath = newPath.append(ActorQueryPath.root(itemId));
 
     return _Builder.child(
@@ -812,7 +813,8 @@ class _Builder<Q extends EntityQuery> {
       throw FluirError('index $index is out of bounds for ${child.debugId}');
     }
 
-    return child.items.elementAt(index);
+    // Return the EntityId from the ListItem
+    return child.items.elementAt(index).value;
   }
 
   List<EntityId> listItems(ListSelector<Q> sel) {
@@ -837,7 +839,8 @@ class _Builder<Q extends EntityQuery> {
       );
     }
 
-    return List.unmodifiable(child.items);
+    // Extract EntityIds from ListItems for backward compatibility
+    return List.unmodifiable(child.items.map((item) => item.value));
   }
 
   int? listLength(ListSelector<Q> sel) {

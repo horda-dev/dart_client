@@ -286,15 +286,55 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
   }
 }
 
+/// Pagination parameters for list views.
+///
+/// Specifies how to paginate list query results. Use [limitToFirst] to
+/// limit the number of items returned, and optionally specify [startAt]
+/// to skip items from the beginning.
+///
+/// Example:
+/// ```dart
+/// // Get first 10 items
+/// Pagination(limitToFirst: 10)
+///
+/// // Get 10 items starting from index 5
+/// Pagination(limitToFirst: 10, startAt: 5)
+/// ```
+class Pagination {
+  /// Creates pagination parameters.
+  ///
+  /// [limitToFirst] specifies the maximum number of items to return (required).
+  /// [startAt] specifies the zero-based starting index (defaults to 0).
+  const Pagination({
+    required this.limitToFirst,
+    this.startAt = 0,
+  });
+
+  /// Zero-based starting index for pagination.
+  final int startAt;
+
+  /// Maximum number of items to return.
+  final int limitToFirst;
+}
+
 /// View for accessing lists of related entities.
 ///
 /// List views allow you to query collections of related entities,
 /// with each item in the list queried using the provided query definition.
 /// Supports real-time updates for list operations (add, remove, clear).
+/// Optionally supports pagination to limit the number of items retrieved.
 ///
 /// Example:
 /// ```dart
+/// // Without pagination
 /// final userFriends = EntityListView('friends', query: UserQuery());
+///
+/// // With pagination - get first 20 friends
+/// final userFriends = EntityListView(
+///   'friends',
+///   query: UserQuery(),
+///   pagination: Pagination(limitToFirst: 20),
+/// );
 /// ```
 class EntityListView<S extends EntityQuery> extends EntityView {
   EntityListView(
@@ -302,16 +342,26 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     super.subscribe,
     required this.query,
     this.attrs = const [],
-  }) : super(name, convert: (res) => List<EntityId>.from(res));
+    this.pagination,
+  }) : super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
   final S query;
 
   final List<String> attrs;
 
+  /// Optional pagination parameters for limiting the number of items.
+  final Pagination? pagination;
+
   @override
   ViewQueryDefBuilder queryBuilder() {
-    var qb = ListQueryDefBuilder(query.entityName, name, attrs);
+    var qb = ListQueryDefBuilder(
+      query.entityName,
+      name,
+      attrs,
+      startAt: pagination?.startAt ?? 0,
+      length: pagination?.limitToFirst ?? 0,
+    );
 
     for (var v in query.views.values) {
       qb.add(v.queryBuilder());
@@ -1300,7 +1350,8 @@ class ActorListViewHost extends ActorViewHost {
     super.system,
   );
 
-  Iterable<EntityId> get items => super.value;
+  /// Returns the list items with their XID keys and entity IDs.
+  Iterable<ListItem> get items => super.value;
 
   @override
   EntityListView get view => super.view as EntityListView;
@@ -1310,7 +1361,8 @@ class ActorListViewHost extends ActorViewHost {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
-    final itemId = items.elementAt(index);
+    final item = items.elementAt(index);
+    final itemId = item.value;
 
     final attrHost = _attrHosts[itemId];
 
@@ -1328,7 +1380,8 @@ class ActorListViewHost extends ActorViewHost {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
-    final itemId = items.elementAt(index);
+    final item = items.elementAt(index);
+    final itemId = item.value;
 
     final attrHost = _attrHosts[itemId];
 
@@ -1346,7 +1399,8 @@ class ActorListViewHost extends ActorViewHost {
       throw FluirError('index $index is out of bounds for $debugId');
     }
 
-    var itemId = items.elementAt(index);
+    final item = items.elementAt(index);
+    final itemId = item.value;
     var host = _children[itemId];
     if (host == null) {
       throw FluirError('no item host found for $itemId for $debugId');
@@ -1403,7 +1457,8 @@ class ActorListViewHost extends ActorViewHost {
 
     final attrs = result.attrs;
     for (final pair in IterableZip([result.value, result.items])) {
-      final itemId = pair[0] as EntityId;
+      final listItem = pair[0] as ListItem;
+      final itemId = listItem.value;
       final result = pair[1] as QueryResult;
 
       final itemHost = view.query.childHost(
@@ -1462,7 +1517,7 @@ class ActorListViewHost extends ActorViewHost {
   }
 
   @override
-  Future<List<EntityId>> project(
+  Future<List<ListItem>> project(
     String id,
     String name,
     Change event,
@@ -1486,11 +1541,18 @@ class ActorListViewHost extends ActorViewHost {
         system,
       )..start(id, event.itemId);
 
-      return previousValue..add(event.itemId);
+      // Create ListItem from the change's key and itemId
+      final listItem = ListItem(event.key, event.itemId);
+      return previousValue..add(listItem);
     }
 
     if (event is ListViewItemAddedIfAbsent) {
-      if (!previousValue.contains(event.itemId)) {
+      // Check if item already exists by comparing entity IDs
+      final exists = (previousValue as List<ListItem>).any(
+        (item) => item.value == event.itemId,
+      );
+
+      if (!exists) {
         final host = ActorQueryHost(
           '$parentLoggerName.${view.name}',
           this,
@@ -1507,24 +1569,33 @@ class ActorListViewHost extends ActorViewHost {
           system,
         )..start(id, event.itemId);
 
-        previousValue.add(event.itemId);
+        // Create ListItem from the change's key and itemId
+        final listItem = ListItem(event.key, event.itemId);
+        previousValue.add(listItem);
       }
       return previousValue;
     }
 
     if (event is ListViewItemRemoved) {
+      // Find the item by its key
+      final item = (previousValue as List<ListItem>).firstWhere(
+        (item) => item.key == event.key,
+      );
+      final itemId = item.value;
+
       assert(() {
-        return _children.containsKey(event.itemId) &&
-            _attrHosts.containsKey(event.itemId);
+        return _children.containsKey(itemId) && _attrHosts.containsKey(itemId);
       }());
 
-      final attrHost = _attrHosts.remove(event.itemId);
+      final attrHost = _attrHosts.remove(itemId);
       attrHost!.stop();
-      final host = _children.remove(event.itemId);
+      final host = _children.remove(itemId);
       await host!.unsubscribe();
       host.stop();
 
-      return previousValue..remove(event.itemId);
+      // Remove the ListItem by its key
+      previousValue.removeWhere((item) => item.key == event.key);
+      return previousValue;
     }
 
     if (event is ListViewCleared) {
