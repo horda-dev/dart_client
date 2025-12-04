@@ -19,6 +19,7 @@ export 'src/provider.dart';
 export 'src/query.dart'
     show
         EntityQuery,
+        Pagination,
         EmptyQuery,
         ViewConvertFunc,
         EntityView,
