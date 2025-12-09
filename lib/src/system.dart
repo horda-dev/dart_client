@@ -427,7 +427,10 @@ class HordaClientSystem {
   }
 
   /// Stores the count of subs per view.
-  /// - Key - view subscription key (entityName/id/name for views, id/name for attrs)
+  /// - Key - view subscription key:
+  ///   - For regular views: entityName/id/name
+  ///   - For list views: entityName/id/name:pageId (each list view is tracked separately, because pageId is unique)
+  ///   - For attributes: id/name
   /// - Value - count of hosts which depend on a view subscription
   final _viewSubCount = <String, int>{};
 }
