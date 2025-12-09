@@ -1530,26 +1530,26 @@ class ActorListViewHost extends ActorViewHost {
         view.query,
         system,
       );
-      await host.run(event.itemId);
+      await host.run(event.value);
 
-      _children[event.itemId] = host;
-      _attrHosts[event.itemId] = AttributesHost(
+      _children[event.value] = host;
+      _attrHosts[event.value] = AttributesHost(
         parentLoggerName,
         _watcher,
         view.name,
         view.attrs,
         system,
-      )..start(id, event.itemId);
+      )..start(id, event.value);
 
-      // Create ListItem from the change's key and itemId
-      final listItem = ListItem(event.key, event.itemId);
+      // Create ListItem from the change's key and value
+      final listItem = ListItem(event.key, event.value);
       return previousValue..add(listItem);
     }
 
     if (event is ListViewItemAddedIfAbsent) {
       // Check if item already exists by comparing entity IDs
       final exists = (previousValue as List<ListItem>).any(
-        (item) => item.value == event.itemId,
+        (item) => item.value == event.value,
       );
 
       if (!exists) {
@@ -1559,18 +1559,18 @@ class ActorListViewHost extends ActorViewHost {
           view.query,
           system,
         );
-        await host.run(event.itemId);
-        _children[event.itemId] = host;
-        _attrHosts[event.itemId] = AttributesHost(
+        await host.run(event.value);
+        _children[event.value] = host;
+        _attrHosts[event.value] = AttributesHost(
           parentLoggerName,
           _watcher,
           view.name,
           view.attrs,
           system,
-        )..start(id, event.itemId);
+        )..start(id, event.value);
 
         // Create ListItem from the change's key and itemId
-        final listItem = ListItem(event.key, event.itemId);
+        final listItem = ListItem(event.key, event.value);
         previousValue.add(listItem);
       }
       return previousValue;
