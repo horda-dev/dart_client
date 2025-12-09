@@ -1367,7 +1367,7 @@ class ActorListViewHost extends ActorViewHost {
   EntityListView get view => super.view as EntityListView;
 
   T valueAttr<T>(String attrName, int index) {
-    if (index >= items.length) {
+    if (index < 0 || index >= items.length) {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
@@ -1385,8 +1385,26 @@ class ActorListViewHost extends ActorViewHost {
     return attrHost.valueAttr<T>(attrName);
   }
 
+  T valueAttrByKey<T>(String attrName, String itemKey) {
+    if (itemKey.isEmpty) {
+      throw FluirError('can not get value attribute by empty item key');
+    }
+
+    final index = items.toList().indexWhere(
+      (item) => item.key == itemKey,
+    );
+
+    if (index == -1) {
+      throw FluirError(
+        'list item with key "$itemKey" not found in ${debugId}',
+      );
+    }
+
+    return valueAttr<T>(attrName, index);
+  }
+
   int counterAttr(String attrName, int index) {
-    if (index >= items.length) {
+    if (index < 0 || index >= items.length) {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
@@ -1397,11 +1415,29 @@ class ActorListViewHost extends ActorViewHost {
 
     if (attrHost == null) {
       throw FluirError(
-        'couldn\'t find attributes host for $itemId in view ${view.name}',
+        'couldn\'t find attributes host for $item in view ${view.name}',
       );
     }
 
     return attrHost.counterAttr(attrName);
+  }
+
+  int counterAttrByKey(String attrName, String itemKey) {
+    if (itemKey.isEmpty) {
+      throw FluirError('can not get value attribute by empty item key');
+    }
+
+    final index = items.toList().indexWhere(
+      (item) => item.key == itemKey,
+    );
+
+    if (index == -1) {
+      throw FluirError(
+        'list item with key "$itemKey" not found in ${debugId}',
+      );
+    }
+
+    return counterAttr(attrName, index);
   }
 
   ActorQueryHost itemHost(int index) {

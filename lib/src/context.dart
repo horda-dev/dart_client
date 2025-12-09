@@ -351,19 +351,27 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
   }
 
   int listItemCounterAttr(ListSelector<Q> sel, String attrName, int index) {
-    return _builder.listItemCounterAtt(sel, attrName, index);
+    return _builder.listItemCounterAttr(sel, attrName, index);
   }
 
   EntityId listItemValue(ListSelector<Q> sel, String key) {
     return _builder.listItemValue(sel, key);
   }
 
-  T listItemValueAttrByKey<T>(ListSelector<Q> sel, String key, String attrName) {
-    return _builder.listItemValAttrByKey<T>(sel, key, attrName);
+  T listItemValueAttrByKey<T>(
+    ListSelector<Q> sel,
+    String attrName,
+    String itemKey,
+  ) {
+    return _builder.listItemValAttrByKey<T>(sel, attrName, itemKey);
   }
 
-  int listItemCounterAttrByKey(ListSelector<Q> sel, String key, String attrName) {
-    return _builder.listItemCounterAttrByKey(sel, key, attrName);
+  int listItemCounterAttrByKey(
+    ListSelector<Q> sel,
+    String attrName,
+    String itemKey,
+  ) {
+    return _builder.listItemCounterAttrByKey(sel, attrName, itemKey);
   }
 
   bool listContainsKey(ListSelector<Q> sel, String key) {
@@ -536,7 +544,8 @@ class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
     );
   }
 
-  MaybeEntityQueryDependencyBuilder<I> listItemQueryByKey<I extends EntityQuery>(
+  MaybeEntityQueryDependencyBuilder<I>
+  listItemQueryByKey<I extends EntityQuery>(
     ListItemSelector<Q, I> sel,
     String key,
   ) {
@@ -663,7 +672,9 @@ class _Builder<Q extends EntityQuery> {
     final index = list.items.toList().indexWhere((item) => item.key == key);
 
     if (index == -1) {
-      throw FluirError('list item with key "$key" not found in ${list.debugId}');
+      throw FluirError(
+        'list item with key "$key" not found in ${list.debugId}',
+      );
     }
 
     var listItem = list.items.elementAt(index);
@@ -1076,15 +1087,44 @@ class _Builder<Q extends EntityQuery> {
     return child.valueAttr<T>(attrName, index);
   }
 
-  int listItemCounterAtt(ListSelector<Q> sel, String attrName, int index) {
-    var view = sel(host.query as Q);
-    var newPath = path.append(ActorQueryPath.root(view.name));
+  T listItemValAttrByKey<T>(
+    ListSelector<Q> sel,
+    String attrName,
+    String itemKey,
+  ) {
+    final view = sel(host.query as Q);
+    final newPath = path.append(ActorQueryPath.root(view.name));
 
     if (depend) {
       element.depend(queryType, newPath, context);
     }
 
-    var child = host.children[view.name];
+    final child = host.children[view.name];
+
+    if (child == null) {
+      throw FluirError(
+        'list view host for ${view.name} not found in ${host.debugId}',
+      );
+    }
+
+    if (child is! ActorListViewHost) {
+      throw FluirError(
+        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
+      );
+    }
+
+    return child.valueAttrByKey<T>(attrName, itemKey);
+  }
+
+  int listItemCounterAttr(ListSelector<Q> sel, String attrName, int index) {
+    final view = sel(host.query as Q);
+    final newPath = path.append(ActorQueryPath.root(view.name));
+
+    if (depend) {
+      element.depend(queryType, newPath, context);
+    }
+
+    final child = host.children[view.name];
 
     if (child == null) {
       throw FluirError(
@@ -1099,6 +1139,35 @@ class _Builder<Q extends EntityQuery> {
     }
 
     return child.counterAttr(attrName, index);
+  }
+
+  int listItemCounterAttrByKey(
+    ListSelector<Q> sel,
+    String attrName,
+    String itemKey,
+  ) {
+    final view = sel(host.query as Q);
+    final newPath = path.append(ActorQueryPath.root(view.name));
+
+    if (depend) {
+      element.depend(queryType, newPath, context);
+    }
+
+    final child = host.children[view.name];
+
+    if (child == null) {
+      throw FluirError(
+        'list view host for ${view.name} not found in ${host.debugId}',
+      );
+    }
+
+    if (child is! ActorListViewHost) {
+      throw FluirError(
+        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
+      );
+    }
+
+    return child.counterAttrByKey(attrName, itemKey);
   }
 
   void addChangeHandler<C extends Change>(
