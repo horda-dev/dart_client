@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:horda_core/horda_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
+import 'package:xid/xid.dart';
 
 import 'connection.dart';
 import 'context.dart';
@@ -288,30 +289,30 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
 
 /// Pagination parameters for list views.
 ///
-/// Specifies how to paginate list query results. Use [limitToFirst] to
-/// limit the number of items returned, and optionally specify [startAt]
-/// to skip items from the beginning.
+/// Specifies how to paginate list query results using cursor-based pagination.
+/// Use [limitToFirst] to limit the number of items returned, and optionally
+/// [startAfter] to continue from a specific cursor position.
 ///
 /// Example:
 /// ```dart
 /// // Get first 10 items
 /// Pagination(limitToFirst: 10)
 ///
-/// // Get 10 items starting from index 5
-/// Pagination(limitToFirst: 10, startAt: 5)
+/// // Get next 10 items after a specific cursor
+/// Pagination(limitToFirst: 10, startAfter: 'item-key-123')
 /// ```
 class Pagination {
   /// Creates pagination parameters.
   ///
   /// [limitToFirst] specifies the maximum number of items to return (required).
-  /// [startAt] specifies the zero-based starting index (defaults to 0).
+  /// [startAfter] specifies the cursor to start after (defaults to empty string).
   const Pagination({
     required this.limitToFirst,
-    this.startAt = 0,
+    this.startAfter = '',
   });
 
-  /// Zero-based starting index for pagination.
-  final int startAt;
+  /// Cursor for pagination - start after this item key.
+  final String startAfter;
 
   /// Maximum number of items to return.
   final int limitToFirst;
@@ -343,7 +344,8 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     required this.query,
     this.attrs = const [],
     this.pagination,
-  }) : super(name, convert: (res) => List<ListItem>.from(res));
+  }) : _pageID = Xid.string(),
+       super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
   final S query;
@@ -353,13 +355,17 @@ class EntityListView<S extends EntityQuery> extends EntityView {
   /// Optional pagination parameters for limiting the number of items.
   final Pagination? pagination;
 
+  /// Auto-generated unique page identifier for tracking pagination state.
+  final String _pageID;
+
   @override
   ViewQueryDefBuilder queryBuilder() {
     var qb = ListQueryDefBuilder(
       query.entityName,
       name,
       attrs,
-      startAt: pagination?.startAt ?? 0,
+      startAfter: pagination?.startAfter ?? '',
+      pageID: _pageID,
       length: pagination?.limitToFirst ?? 0,
     );
 
@@ -376,7 +382,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     ActorQueryHost parent,
     HordaClientSystem system,
   ) {
-    return ActorListViewHost(parentLoggerName, parent, this, system);
+    return ActorListViewHost(parentLoggerName, parent, this, system, _pageID);
   }
 }
 
@@ -1348,7 +1354,11 @@ class ActorListViewHost extends ActorViewHost {
     super.parent,
     super.view,
     super.system,
+    this.pageID,
   );
+
+  /// Unique page identifier for tracking pagination state.
+  final String pageID;
 
   /// Returns the list items with their XID keys and entity IDs.
   Iterable<ListItem> get items => super.value;
