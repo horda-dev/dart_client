@@ -1634,7 +1634,7 @@ class ActorListViewHost extends ActorViewHost {
 
     if (view.subscribe) {
       subs.add(
-        ActorViewSub(entityName, actorId!, view.name),
+        ActorViewSub(entityName, actorId!, view.name, pageId),
       );
     }
 
