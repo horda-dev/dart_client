@@ -344,7 +344,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     required this.query,
     this.attrs = const [],
     this.pagination,
-  }) : _pageID = Xid.string(),
+  }) : _pageId = Xid.string(),
        super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
@@ -356,7 +356,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
   final Pagination? pagination;
 
   /// Auto-generated unique page identifier for tracking pagination state.
-  final String _pageID;
+  final String _pageId;
 
   @override
   ViewQueryDefBuilder queryBuilder() {
@@ -365,7 +365,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
       name,
       attrs,
       startAfter: pagination?.startAfter ?? '',
-      pageID: _pageID,
+      pageId: _pageId,
       length: pagination?.limitToFirst ?? 0,
     );
 
@@ -382,7 +382,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     ActorQueryHost parent,
     HordaClientSystem system,
   ) {
-    return ActorListViewHost(parentLoggerName, parent, this, system, _pageID);
+    return ActorListViewHost(parentLoggerName, parent, this, system, _pageId);
   }
 }
 
