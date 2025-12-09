@@ -1354,11 +1354,11 @@ class ActorListViewHost extends ActorViewHost {
     super.parent,
     super.view,
     super.system,
-    this.pageID,
+    this.pageId,
   );
 
   /// Unique page identifier for tracking pagination state.
-  final String pageID;
+  final String pageId;
 
   /// Returns the list items with their XID keys and entity IDs.
   Iterable<ListItem> get items => super.value;
@@ -1530,66 +1530,50 @@ class ActorListViewHost extends ActorViewHost {
   Future<List<ListItem>> project(
     String id,
     String name,
-    Change event,
+    Change change,
     dynamic previousValue,
   ) async {
-    if (event is ListViewItemAdded) {
+    if (change is! ListPageChange) {
+      logger.warning(
+        '$id: received change which is not a list page sync $change',
+      );
+      return previousValue;
+    }
+
+    if (change.pageId != pageId) {
+      logger.fine(
+        '$id: skipped page sync change of another page $change',
+      );
+      return previousValue;
+    }
+
+    if (change is ListPageItemAdded) {
       final host = ActorQueryHost(
         '$parentLoggerName.${view.name}',
         this,
         view.query,
         system,
       );
-      await host.run(event.value);
+      await host.run(change.value);
 
-      _children[event.value] = host;
-      _attrHosts[event.value] = AttributesHost(
+      _children[change.value] = host;
+      _attrHosts[change.value] = AttributesHost(
         parentLoggerName,
         _watcher,
         view.name,
         view.attrs,
         system,
-      )..start(id, event.value);
+      )..start(id, change.value);
 
       // Create ListItem from the change's key and value
-      final listItem = ListItem(event.key, event.value);
+      final listItem = ListItem(change.key, change.value);
       return previousValue..add(listItem);
     }
 
-    if (event is ListViewItemAddedIfAbsent) {
-      // Check if item already exists by comparing entity IDs
-      final exists = (previousValue as List<ListItem>).any(
-        (item) => item.value == event.value,
-      );
-
-      if (!exists) {
-        final host = ActorQueryHost(
-          '$parentLoggerName.${view.name}',
-          this,
-          view.query,
-          system,
-        );
-        await host.run(event.value);
-        _children[event.value] = host;
-        _attrHosts[event.value] = AttributesHost(
-          parentLoggerName,
-          _watcher,
-          view.name,
-          view.attrs,
-          system,
-        )..start(id, event.value);
-
-        // Create ListItem from the change's key and itemId
-        final listItem = ListItem(event.key, event.value);
-        previousValue.add(listItem);
-      }
-      return previousValue;
-    }
-
-    if (event is ListViewItemRemoved) {
+    if (change is ListPageItemRemoved) {
       // Find the item by its key
       final item = (previousValue as List<ListItem>).firstWhere(
-        (item) => item.key == event.key,
+        (item) => item.key == change.key,
       );
       final itemId = item.value;
 
@@ -1604,11 +1588,11 @@ class ActorListViewHost extends ActorViewHost {
       host.stop();
 
       // Remove the ListItem by its key
-      previousValue.removeWhere((item) => item.key == event.key);
+      previousValue.removeWhere((item) => item.key == change.key);
       return previousValue;
     }
 
-    if (event is ListViewCleared) {
+    if (change is ListPageCleared) {
       if (_children.isEmpty) {
         return previousValue..clear();
       }
@@ -1633,7 +1617,7 @@ class ActorListViewHost extends ActorViewHost {
       return previousValue..clear();
     }
 
-    logger.warning('$id: unknown event $event');
+    logger.warning('$id: unknown event $change');
     return previousValue;
   }
 
