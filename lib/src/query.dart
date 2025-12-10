@@ -1608,9 +1608,15 @@ class ActorListViewHost extends ActorViewHost {
 
     if (change is ListPageItemRemoved) {
       // Find the item by its key
-      final item = (previousValue as List<ListItem>).firstWhere(
+      final item = (previousValue as List<ListItem>).firstWhereOrNull(
         (item) => item.key == change.key,
       );
+
+      if (item == null) {
+        logger.fine('skipped removing non-existent key $change');
+        return previousValue;
+      }
+
       final itemId = item.value;
 
       assert(() {
