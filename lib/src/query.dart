@@ -343,7 +343,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     super.subscribe,
     required this.query,
     this.attrs = const [],
-    this.pagination,
+    this.pagination = const Pagination(limitToFirst: 100),
   }) : _pageId = Xid.string(),
        super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
@@ -353,7 +353,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
   final List<String> attrs;
 
   /// Optional pagination parameters for limiting the number of items.
-  final Pagination? pagination;
+  final Pagination pagination;
 
   /// Auto-generated unique page identifier for tracking pagination state.
   final String _pageId;
@@ -364,9 +364,9 @@ class EntityListView<S extends EntityQuery> extends EntityView {
       query.entityName,
       name,
       attrs,
-      startAfter: pagination?.startAfter ?? '',
+      startAfter: pagination.startAfter,
       pageId: _pageId,
-      length: pagination?.limitToFirst ?? 0,
+      length: pagination.limitToFirst,
     );
 
     for (var v in query.views.values) {
