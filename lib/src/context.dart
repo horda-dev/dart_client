@@ -509,20 +509,16 @@ class EntityQueryListHandlerBuilder<Q extends EntityQuery> {
   final _Builder<Q> _builder;
   final ListSelector<Q> _sel;
 
-  void onItemAdded(ChangeHandler<ListViewItemAdded> handler) {
-    _builder.addChangeHandler<ListViewItemAdded>(_sel, handler);
+  void onItemAdded(ChangeHandler<ListPageItemAdded> handler) {
+    _builder.addChangeHandler<ListPageItemAdded>(_sel, handler);
   }
 
-  void onItemRemoved(ChangeHandler<ListViewItemRemoved> handler) {
-    _builder.addChangeHandler<ListViewItemRemoved>(_sel, handler);
+  void onItemRemoved(ChangeHandler<ListPageItemRemoved> handler) {
+    _builder.addChangeHandler<ListPageItemRemoved>(_sel, handler);
   }
 
-  void onItemAddedIfAbsent(ChangeHandler<ListViewItemAddedIfAbsent> handler) {
-    _builder.addChangeHandler<ListViewItemAddedIfAbsent>(_sel, handler);
-  }
-
-  void onCleared(ChangeHandler<ListViewCleared> handler) {
-    _builder.addChangeHandler<ListViewCleared>(_sel, handler);
+  void onCleared(ChangeHandler<ListPageCleared> handler) {
+    _builder.addChangeHandler<ListPageCleared>(_sel, handler);
   }
 }
 
