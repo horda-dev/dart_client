@@ -1,3 +1,25 @@
+## 0.27.0
+
+- **BREAKING CHANGE**: List views now return `List<ListItem>` instead of `List<EntityId>` - list items now have both a `key` (XID string) and `value` (EntityId)
+- **BREAKING CHANGE**: Renamed `listItem()` to `listItemQuery()` in `EntityQueryDependencyBuilder` and `MaybeEntityQueryDependencyBuilder`
+- **BREAKING CHANGE**: Renamed `listItemId()` to `listItem()` - now returns `ListItem` instead of `EntityId`
+- **BREAKING CHANGE**: List change listener types updated to page sync types:
+  - `onItemAdded()` now receives `ListPageItemAdded` instead of `ListViewItemAdded`
+  - `onItemRemoved()` now receives `ListPageItemRemoved` instead of `ListViewItemRemoved`
+  - `onCleared()` now receives `ListPageCleared` instead of `ListViewCleared`
+  - Removed `onItemAddedIfAbsent()` method
+- **FEAT**: Add paginated list querying with new `Pagination` class (exported from main library)
+  - Configure via `EntityListView` constructor with `pagination` parameter
+  - Defaults to 100 items per page
+- **FEAT**: Add key-based list item access methods:
+  - `listItemQueryByKey()` - access nested query by item key
+  - `listItemValue()` - get EntityId by key
+  - `listItemValueAttrByKey()` - get value attribute by key
+  - `listItemCounterAttrByKey()` - get counter attribute by key
+  - `listContainsKey()` - check if key exists in list
+- **FEAT**: Use horda_core 0.19.0
+- **FIX**: Fix infinite query loading when switching widget key or causing underlying query element substitution in any other way.
+
 ## 0.26.0
 
 - **FEAT**: queries now use atomic `queryAndSubscribe()` operation to prevent the change id gap between the query result and subscription start

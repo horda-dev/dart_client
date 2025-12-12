@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:horda_core/horda_core.dart';
@@ -8,6 +11,7 @@ import 'connection.dart';
 import 'message_store.dart';
 import 'provider.dart';
 import 'query.dart';
+import 'query_synchronizer.dart';
 
 part 'system.g.dart';
 
@@ -172,17 +176,24 @@ class HordaClientSystem {
     messageStore.publishChange(env);
   }
 
-  /// Tracks subscriptions that were created by the server during atomic query+subscribe.
+  /// Finalizes query subscriptions after atomic query+subscribe completes.
   ///
-  /// This method increments reference counts for all provided subscriptions and publishes
-  /// empty change envelopes for views that were already subscribed by other hosts.
+  /// This method:
+  /// 1. Increments reference counts for all provided subscriptions
+  /// 2. Publishes empty change envelopes for views that were already subscribed by other hosts
+  /// 3. Marks the in-flight query as complete, allowing waiting unsubscribe operations to proceed
+  ///
   /// Unlike [subscribeViews], this does NOT call the server since the subscriptions
   /// were already created atomically during the query operation.
   ///
   /// This should be called AFTER [ActorViewHost.attach], when [ActorViewHost] has set up change stream listeners.
   ///
+  /// [queryKey] - Query identifier in format "entityId/queryName"
   /// [subs] - Subscriptions collected from [ActorQueryHost] after attach
-  void trackViewSubscriptions(Iterable<ActorViewSub> subs) {
+  void finalizeQuerySubscriptions(
+    String queryKey,
+    Iterable<ActorViewSub> subs,
+  ) {
     final readyToSub = _incViewSubCount(subs);
     final alreadySubscribed = subs.toSet().difference(readyToSub.toSet());
 
@@ -198,6 +209,9 @@ class HordaClientSystem {
         ),
       );
     }
+
+    // Mark query tracking as complete
+    _querySynchronizer.completeQuery(queryKey);
   }
 
   Future<QueryResult> query({
@@ -208,10 +222,14 @@ class HordaClientSystem {
   }
 
   Future<QueryResult> queryAndSubscribe({
+    required String queryKey,
     required String entityId,
     required QueryDef def,
   }) async {
     logger.fine('$entityId: atomic query and subscribe...');
+
+    // Register in-flight query
+    final completer = _querySynchronizer.registerQuery(queryKey);
 
     try {
       final result = await conn.queryAndSubscribe(
@@ -224,6 +242,10 @@ class HordaClientSystem {
     } catch (e) {
       logger.severe('query and subscribe error $e');
       rethrow;
+    } finally {
+      // Note: completer is completed in finalizeQuerySubscriptions()
+      // We only clean up here if the query failed before finalization
+      _querySynchronizer.cleanupQuery(queryKey, completer);
     }
   }
 
@@ -268,7 +290,13 @@ class HordaClientSystem {
     }
   }
 
-  Future<void> unsubscribeViews(Iterable<ActorViewSub> subs) async {
+  Future<void> unsubscribeViews(
+    String queryKey,
+    Iterable<ActorViewSub> subs,
+  ) async {
+    // Wait for an identical in-flight query to finish, if one exists
+    await _querySynchronizer.waitForQuery(queryKey);
+
     final readyToUnsub = _decViewSubCount(subs);
 
     if (readyToUnsub.isEmpty) {
@@ -358,11 +386,23 @@ class HordaClientSystem {
   }
 
   /// Increments the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should be subscribed.
+  ///
+  /// When tracking ListView subs - ignore the pageId, this allows producing empty change envelopes when new page appears
+  /// for an existing ListView sub.
   Iterable<ActorViewSub> _incViewSubCount(Iterable<ActorViewSub> subs) {
-    final viewsToSub = <ActorViewSub>[];
+    // Ensure ActorViewSubs are unique
+    final viewsToSub = HashSet<ActorViewSub>(
+      equals: (a, b) => a.subKey == b.subKey,
+      hashCode: (sub) => sub.subKey.hashCode,
+    );
 
     for (final sub in subs) {
-      final subKey = sub.subKey;
+      var subKey = sub.subKey;
+
+      // Ignore the pageId for ListView subs
+      if (sub.pageId != null) {
+        subKey = subKey.split(':').first;
+      }
 
       if (_viewSubCount.containsKey(subKey)) {
         final oldHostCount = _viewSubCount[subKey]!;
@@ -383,11 +423,26 @@ class HordaClientSystem {
   }
 
   /// Decrements the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should to be unsubscribed.
+  ///
+  /// When tracking ListView subs - ignore the pageId to stay consistent with [_incViewSubCount].
+  ///
+  /// Even though they are tracked, ListView subs must be always unsubscribed to dispose the server page state which is no longer needed.
+  /// Server will completely unsubscribe a ListView when no pages are left.
   Iterable<ActorViewSub> _decViewSubCount(Iterable<ActorViewSub> subs) {
-    final viewsToUnsub = <ActorViewSub>[];
+    // Ensure ActorViewSubs are unique
+    final viewsToUnsub = HashSet<ActorViewSub>(
+      equals: (a, b) => a.subKey == b.subKey,
+      hashCode: (sub) => sub.subKey.hashCode,
+    );
 
     for (final sub in subs) {
-      final subKey = sub.subKey;
+      var subKey = sub.subKey;
+
+      // Ignore the pageId when tracking ListView subs, but always unsub list view pages
+      if (sub.pageId != null) {
+        subKey = subKey.split(':').first;
+        viewsToUnsub.add(sub);
+      }
 
       if (_viewSubCount.containsKey(subKey)) {
         final oldHostCount = _viewSubCount[subKey]!;
@@ -427,9 +482,16 @@ class HordaClientSystem {
   }
 
   /// Stores the count of subs per view.
-  /// - Key - view subscription key (entityName/id/name for views, id/name for attrs)
+  /// - Key - view subscription key:
+  ///   - For regular views: entityName/id/name
+  ///   - For list views: entityName/id/name:pageId (each list view is tracked separately, because pageId is unique)
+  ///   - For attributes: id/name
   /// - Value - count of hosts which depend on a view subscription
   final _viewSubCount = <String, int>{};
+
+  /// TODO: Remove when QuerySynchronizer is no longer needed
+  /// Temporary fix for queryAndSubscribe/unsubscribe desync during widget element substitution
+  final _querySynchronizer = QuerySynchronizer();
 }
 
 /// Test implementation of [HordaClientSystem] for unit testing.

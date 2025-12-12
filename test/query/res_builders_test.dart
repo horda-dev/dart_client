@@ -29,12 +29,12 @@ void main() {
       )
       ..list('list1', attrs, '201', (rb) {
         rb
-          ..item('actor3', (rb) {
+          ..item('xid-3', 'actor3', (rb) {
             rb
               ..val('view100', 'value3100', '3100')
               ..val('view110', 'value3110', '3110');
           })
-          ..item('actor4', (rb) {
+          ..item('xid-4', 'actor4', (rb) {
             rb
               ..val('view100', 'value4100', '4100')
               ..val('view110', 'value4110', '4110');
@@ -92,7 +92,12 @@ void main() {
     var list1 = res.views['list1'] as ListQueryResult;
     expect(list1, isNotNull);
     expect(list1, isA<ListQueryResult>());
-    expect(list1.value, ['actor3', 'actor4']);
+    // Check ListItems with keys and values
+    expect(list1.value.length, 2);
+    expect(list1.value.elementAt(0).key, 'xid-3');
+    expect(list1.value.elementAt(0).value, 'actor3');
+    expect(list1.value.elementAt(1).key, 'xid-4');
+    expect(list1.value.elementAt(1).value, 'actor4');
     expect(list1.changeId, '201');
     expect(list1.attrs, {
       'actor3': {
@@ -171,12 +176,12 @@ void main() {
       )
       ..list('list1', attrs, '201', (rb) {
         rb
-          ..item('actor3', (rb) {
+          ..item('xid-3', 'actor3', (rb) {
             rb
               ..val('view100', 'value3100', '3100')
               ..val('view110', 'value3110', '3110');
           })
-          ..item('actor4', (rb) {
+          ..item('xid-4', 'actor4', (rb) {
             rb
               ..val('view100', 'value4100', '4100')
               ..val('view110', 'value4110', '4110');
@@ -203,7 +208,10 @@ void main() {
       },
       'list1': {
         'type': 'list',
-        'val': ['actor3', 'actor4'],
+        'val': [
+          {'key': 'xid-3', 'value': 'actor3'},
+          {'key': 'xid-4', 'value': 'actor4'},
+        ],
         'attrs': {
           'actor3': {
             'attr3': {'val': 'a33', 'chid': '1'},

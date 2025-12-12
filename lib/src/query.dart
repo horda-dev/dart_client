@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:horda_core/horda_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
+import 'package:xid/xid.dart';
 
 import 'connection.dart';
 import 'context.dart';
@@ -286,15 +287,55 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
   }
 }
 
+/// Pagination parameters for list views.
+///
+/// Specifies how to paginate list query results using cursor-based pagination.
+/// Use [limitToFirst] to limit the number of items returned, and optionally
+/// [startAfter] to continue from a specific cursor position.
+///
+/// Example:
+/// ```dart
+/// // Get first 10 items
+/// Pagination(limitToFirst: 10)
+///
+/// // Get next 10 items after a specific cursor
+/// Pagination(limitToFirst: 10, startAfter: 'item-key-123')
+/// ```
+class Pagination {
+  /// Creates pagination parameters.
+  ///
+  /// [limitToFirst] specifies the maximum number of items to return (required).
+  /// [startAfter] specifies the cursor to start after (defaults to empty string).
+  const Pagination({
+    required this.limitToFirst,
+    this.startAfter = '',
+  });
+
+  /// Cursor for pagination - start after this item key.
+  final String startAfter;
+
+  /// Maximum number of items to return.
+  final int limitToFirst;
+}
+
 /// View for accessing lists of related entities.
 ///
 /// List views allow you to query collections of related entities,
 /// with each item in the list queried using the provided query definition.
 /// Supports real-time updates for list operations (add, remove, clear).
+/// Optionally supports pagination to limit the number of items retrieved.
 ///
 /// Example:
 /// ```dart
+/// // Without pagination
 /// final userFriends = EntityListView('friends', query: UserQuery());
+///
+/// // With pagination - get first 20 friends
+/// final userFriends = EntityListView(
+///   'friends',
+///   query: UserQuery(),
+///   pagination: Pagination(limitToFirst: 20),
+/// );
 /// ```
 class EntityListView<S extends EntityQuery> extends EntityView {
   EntityListView(
@@ -302,16 +343,31 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     super.subscribe,
     required this.query,
     this.attrs = const [],
-  }) : super(name, convert: (res) => List<EntityId>.from(res));
+    this.pagination = const Pagination(limitToFirst: 100),
+  }) : _pageId = Xid.string(),
+       super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
   final S query;
 
   final List<String> attrs;
 
+  /// Optional pagination parameters for limiting the number of items.
+  final Pagination pagination;
+
+  /// Auto-generated unique page identifier for tracking pagination state.
+  final String _pageId;
+
   @override
   ViewQueryDefBuilder queryBuilder() {
-    var qb = ListQueryDefBuilder(query.entityName, name, attrs);
+    var qb = ListQueryDefBuilder(
+      query.entityName,
+      name,
+      attrs,
+      startAfter: pagination.startAfter,
+      pageId: _pageId,
+      length: pagination.limitToFirst,
+    );
 
     for (var v in query.views.values) {
       qb.add(v.queryBuilder());
@@ -326,7 +382,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     ActorQueryHost parent,
     HordaClientSystem system,
   ) {
-    return ActorListViewHost(parentLoggerName, parent, this, system);
+    return ActorListViewHost(parentLoggerName, parent, this, system, _pageId);
   }
 }
 
@@ -402,6 +458,7 @@ class ActorQueryHost {
 
   Future<void> run(EntityId actorId) async {
     final qdef = query.queryBuilder().build();
+    final queryKey = '$actorId/${query.name}';
 
     logger.fine('$actorId: running query...');
     logger.finer('$actorId: running query: ${qdef.toJson()}');
@@ -412,6 +469,7 @@ class ActorQueryHost {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
       final result = await system.queryAndSubscribe(
+        queryKey: queryKey,
         entityId: actorId,
         def: qdef,
       );
@@ -426,9 +484,10 @@ class ActorQueryHost {
       // Attach first to set up change stream listeners
       attach(actorId, result);
 
-      // Now collect all subscriptions and track them.
-      // This will publish empty change envelopes for already-subscribed views.
-      system.trackViewSubscriptions(subscriptions());
+      // Finalize query subscriptions
+      // This will publish empty change envelopes for already-subscribed views
+      // and mark the in-flight query as complete
+      system.finalizeQuerySubscriptions(queryKey, subscriptions());
 
       logger.info('$actorId: ran');
     } catch (e) {
@@ -439,9 +498,10 @@ class ActorQueryHost {
   }
 
   Future<void> unsubscribe() async {
+    final queryKey = '$actorId/${query.name}';
     logger.fine('$actorId: unsubscribing...');
 
-    await system.unsubscribeViews(subscriptions());
+    await system.unsubscribeViews(queryKey, subscriptions());
 
     logger.info('$actorId: unsubscribed');
   }
@@ -1298,19 +1358,25 @@ class ActorListViewHost extends ActorViewHost {
     super.parent,
     super.view,
     super.system,
+    this.pageId,
   );
 
-  Iterable<EntityId> get items => super.value;
+  /// Unique page identifier for tracking pagination state.
+  final String pageId;
+
+  /// Returns the list items with their XID keys and entity IDs.
+  Iterable<ListItem> get items => super.value;
 
   @override
   EntityListView get view => super.view as EntityListView;
 
   T valueAttr<T>(String attrName, int index) {
-    if (index >= items.length) {
+    if (index < 0 || index >= items.length) {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
-    final itemId = items.elementAt(index);
+    final item = items.elementAt(index);
+    final itemId = item.value;
 
     final attrHost = _attrHosts[itemId];
 
@@ -1323,22 +1389,59 @@ class ActorListViewHost extends ActorViewHost {
     return attrHost.valueAttr<T>(attrName);
   }
 
+  T valueAttrByKey<T>(String attrName, String itemKey) {
+    if (itemKey.isEmpty) {
+      throw FluirError('can not get value attribute by empty item key');
+    }
+
+    final index = items.toList().indexWhere(
+      (item) => item.key == itemKey,
+    );
+
+    if (index == -1) {
+      throw FluirError(
+        'list item with key "$itemKey" not found in ${debugId}',
+      );
+    }
+
+    return valueAttr<T>(attrName, index);
+  }
+
   int counterAttr(String attrName, int index) {
-    if (index >= items.length) {
+    if (index < 0 || index >= items.length) {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
-    final itemId = items.elementAt(index);
+    final item = items.elementAt(index);
+    final itemId = item.value;
 
     final attrHost = _attrHosts[itemId];
 
     if (attrHost == null) {
       throw FluirError(
-        'couldn\'t find attributes host for $itemId in view ${view.name}',
+        'couldn\'t find attributes host for $item in view ${view.name}',
       );
     }
 
     return attrHost.counterAttr(attrName);
+  }
+
+  int counterAttrByKey(String attrName, String itemKey) {
+    if (itemKey.isEmpty) {
+      throw FluirError('can not get value attribute by empty item key');
+    }
+
+    final index = items.toList().indexWhere(
+      (item) => item.key == itemKey,
+    );
+
+    if (index == -1) {
+      throw FluirError(
+        'list item with key "$itemKey" not found in ${debugId}',
+      );
+    }
+
+    return counterAttr(attrName, index);
   }
 
   ActorQueryHost itemHost(int index) {
@@ -1346,7 +1449,8 @@ class ActorListViewHost extends ActorViewHost {
       throw FluirError('index $index is out of bounds for $debugId');
     }
 
-    var itemId = items.elementAt(index);
+    final item = items.elementAt(index);
+    final itemId = item.value;
     var host = _children[itemId];
     if (host == null) {
       throw FluirError('no item host found for $itemId for $debugId');
@@ -1403,7 +1507,8 @@ class ActorListViewHost extends ActorViewHost {
 
     final attrs = result.attrs;
     for (final pair in IterableZip([result.value, result.items])) {
-      final itemId = pair[0] as EntityId;
+      final listItem = pair[0] as ListItem;
+      final itemId = listItem.value;
       final result = pair[1] as QueryResult;
 
       final itemHost = view.query.childHost(
@@ -1462,72 +1567,78 @@ class ActorListViewHost extends ActorViewHost {
   }
 
   @override
-  Future<List<EntityId>> project(
+  Future<List<ListItem>> project(
     String id,
     String name,
-    Change event,
+    Change change,
     dynamic previousValue,
   ) async {
-    if (event is ListViewItemAdded) {
+    if (change is! ListPageChange) {
+      logger.warning(
+        '$id: received change which is not a list page sync $change',
+      );
+      return previousValue;
+    }
+
+    if (change.pageId != pageId) {
+      logger.fine(
+        '$id: skipped page sync change of another page $change',
+      );
+      return previousValue;
+    }
+
+    if (change is ListPageItemAdded) {
       final host = ActorQueryHost(
         '$parentLoggerName.${view.name}',
         this,
         view.query,
         system,
       );
-      await host.run(event.itemId);
+      await host.run(change.value);
 
-      _children[event.itemId] = host;
-      _attrHosts[event.itemId] = AttributesHost(
+      _children[change.value] = host;
+      _attrHosts[change.value] = AttributesHost(
         parentLoggerName,
         _watcher,
         view.name,
         view.attrs,
         system,
-      )..start(id, event.itemId);
+      )..start(id, change.value);
 
-      return previousValue..add(event.itemId);
+      // Create ListItem from the change's key and value
+      final listItem = ListItem(change.key, change.value);
+      return previousValue..add(listItem);
     }
 
-    if (event is ListViewItemAddedIfAbsent) {
-      if (!previousValue.contains(event.itemId)) {
-        final host = ActorQueryHost(
-          '$parentLoggerName.${view.name}',
-          this,
-          view.query,
-          system,
-        );
-        await host.run(event.itemId);
-        _children[event.itemId] = host;
-        _attrHosts[event.itemId] = AttributesHost(
-          parentLoggerName,
-          _watcher,
-          view.name,
-          view.attrs,
-          system,
-        )..start(id, event.itemId);
+    if (change is ListPageItemRemoved) {
+      // Find the item by its key
+      final item = (previousValue as List<ListItem>).firstWhereOrNull(
+        (item) => item.key == change.key,
+      );
 
-        previousValue.add(event.itemId);
+      if (item == null) {
+        logger.fine('skipped removing non-existent key $change');
+        return previousValue;
       }
-      return previousValue;
-    }
 
-    if (event is ListViewItemRemoved) {
+      final itemId = item.value;
+
       assert(() {
-        return _children.containsKey(event.itemId) &&
-            _attrHosts.containsKey(event.itemId);
+        return _children.containsKey(itemId) && _attrHosts.containsKey(itemId);
       }());
 
-      final attrHost = _attrHosts.remove(event.itemId);
+      final attrHost = _attrHosts.remove(itemId);
       attrHost!.stop();
-      final host = _children.remove(event.itemId);
+      final host = _children.remove(itemId);
       await host!.unsubscribe();
       host.stop();
 
-      return previousValue..remove(event.itemId);
+      // Remove the ListItem by its key
+      previousValue.removeWhere((item) => item.key == change.key);
+      return previousValue;
     }
 
-    if (event is ListViewCleared) {
+    if (change is ListPageCleared) {
       if (_children.isEmpty) {
         return previousValue..clear();
       }
@@ -1544,7 +1655,10 @@ class ActorListViewHost extends ActorViewHost {
       }
 
       logger.fine('unsubscribing on ListViewCleared...');
-      system.unsubscribeViews(subs);
+
+      final queryKey = '$actorId/${parent.query.name}';
+      system.unsubscribeViews(queryKey, subs);
+
       logger.info('unsubscribed on ListViewCleared');
 
       _children.clear();
@@ -1552,7 +1666,7 @@ class ActorListViewHost extends ActorViewHost {
       return previousValue..clear();
     }
 
-    logger.warning('$id: unknown event $event');
+    logger.warning('$id: unknown event $change');
     return previousValue;
   }
 
@@ -1569,7 +1683,7 @@ class ActorListViewHost extends ActorViewHost {
 
     if (view.subscribe) {
       subs.add(
-        ActorViewSub(entityName, actorId!, view.name),
+        ActorViewSub(entityName, actorId!, view.name, pageId),
       );
     }
 
@@ -2216,7 +2330,8 @@ class AttributesHost {
 
   Future<void> unsubscribe() async {
     logger.fine('unsubscribing attrHost $debugId...');
-    await system.unsubscribeViews(subscriptions());
+    // No query key for AttributesHost
+    await system.unsubscribeViews('', subscriptions());
     logger.fine('unsubscribed attrHost $debugId');
   }
 
