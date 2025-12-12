@@ -458,6 +458,7 @@ class ActorQueryHost {
 
   Future<void> run(EntityId actorId) async {
     final qdef = query.queryBuilder().build();
+    final queryKey = '$actorId/${query.name}';
 
     logger.fine('$actorId: running query...');
     logger.finer('$actorId: running query: ${qdef.toJson()}');
@@ -468,6 +469,7 @@ class ActorQueryHost {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
       final result = await system.queryAndSubscribe(
+        queryKey: queryKey,
         entityId: actorId,
         def: qdef,
       );
@@ -482,9 +484,10 @@ class ActorQueryHost {
       // Attach first to set up change stream listeners
       attach(actorId, result);
 
-      // Now collect all subscriptions and track them.
-      // This will publish empty change envelopes for already-subscribed views.
-      system.trackViewSubscriptions(subscriptions());
+      // Finalize query subscriptions
+      // This will publish empty change envelopes for already-subscribed views
+      // and mark the in-flight query as complete
+      system.finalizeQuerySubscriptions(queryKey, subscriptions());
 
       logger.info('$actorId: ran');
     } catch (e) {
@@ -495,9 +498,10 @@ class ActorQueryHost {
   }
 
   Future<void> unsubscribe() async {
+    final queryKey = '$actorId/${query.name}';
     logger.fine('$actorId: unsubscribing...');
 
-    await system.unsubscribeViews(subscriptions());
+    await system.unsubscribeViews(queryKey, subscriptions());
 
     logger.info('$actorId: unsubscribed');
   }
@@ -1651,7 +1655,10 @@ class ActorListViewHost extends ActorViewHost {
       }
 
       logger.fine('unsubscribing on ListViewCleared...');
-      system.unsubscribeViews(subs);
+
+      final queryKey = '$actorId/${parent.query.name}';
+      system.unsubscribeViews(queryKey, subs);
+
       logger.info('unsubscribed on ListViewCleared');
 
       _children.clear();
@@ -2323,7 +2330,8 @@ class AttributesHost {
 
   Future<void> unsubscribe() async {
     logger.fine('unsubscribing attrHost $debugId...');
-    await system.unsubscribeViews(subscriptions());
+    // No query key for AttributesHost
+    await system.unsubscribeViews('', subscriptions());
     logger.fine('unsubscribed attrHost $debugId');
   }
 
