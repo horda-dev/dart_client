@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -385,11 +386,23 @@ class HordaClientSystem {
   }
 
   /// Increments the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should be subscribed.
+  ///
+  /// When tracking ListView subs - ignore the pageId, this allows producing empty change envelopes when new page appears
+  /// for an existing ListView sub.
   Iterable<ActorViewSub> _incViewSubCount(Iterable<ActorViewSub> subs) {
-    final viewsToSub = <ActorViewSub>[];
+    // Ensure ActorViewSubs are unique
+    final viewsToSub = HashSet<ActorViewSub>(
+      equals: (a, b) => a.subKey == b.subKey,
+      hashCode: (sub) => sub.subKey.hashCode,
+    );
 
     for (final sub in subs) {
-      final subKey = sub.subKey;
+      var subKey = sub.subKey;
+
+      // Ignore the pageId for ListView subs
+      if (sub.pageId != null) {
+        subKey = subKey.split(':').first;
+      }
 
       if (_viewSubCount.containsKey(subKey)) {
         final oldHostCount = _viewSubCount[subKey]!;
@@ -410,11 +423,26 @@ class HordaClientSystem {
   }
 
   /// Decrements the host count for every provided [ActorViewSub] and returns [ActorViewSub]s which should to be unsubscribed.
+  ///
+  /// When tracking ListView subs - ignore the pageId to stay consistent with [_incViewSubCount].
+  ///
+  /// Even though they are tracked, ListView subs must be always unsubscribed to dispose the server page state which is no longer needed.
+  /// Server will completely unsubscribe a ListView when no pages are left.
   Iterable<ActorViewSub> _decViewSubCount(Iterable<ActorViewSub> subs) {
-    final viewsToUnsub = <ActorViewSub>[];
+    // Ensure ActorViewSubs are unique
+    final viewsToUnsub = HashSet<ActorViewSub>(
+      equals: (a, b) => a.subKey == b.subKey,
+      hashCode: (sub) => sub.subKey.hashCode,
+    );
 
     for (final sub in subs) {
-      final subKey = sub.subKey;
+      var subKey = sub.subKey;
+
+      // Ignore the pageId when tracking ListView subs, but always unsub list view pages
+      if (sub.pageId != null) {
+        subKey = subKey.split(':').first;
+        viewsToUnsub.add(sub);
+      }
 
       if (_viewSubCount.containsKey(subKey)) {
         final oldHostCount = _viewSubCount[subKey]!;
