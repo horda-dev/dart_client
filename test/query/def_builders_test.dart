@@ -85,12 +85,9 @@ void main() {
         qb
           ..val('view5')
           ..val('view6');
-      });
+      }, limit: 100);
 
-    // TODO: ListQueryDefBuilder is missing the length param, so this test will always fail.
-    // Since ListQueryDefBuilder is defined in horda_core, this will be fixed in the next reverse pagination PR.
-    // So we won't have to publish an extra horda_core and therefore horda_server version.
-    // expect(builtQuery.toJson(), expected.build().toJson());
+    expect(builtQuery.toJson(), expected.build().toJson());
   });
 
   test('query def builder should produce correct json', () {
@@ -324,6 +321,62 @@ void main() {
           'pageId': testPageId,
         },
       },
+    });
+  });
+
+  group('Pagination queryDefLimit', () {
+    test(
+      'ForwardPagination with positive limit should result in positive query def limit',
+      () {
+        final listView = EntityListView(
+          'testList',
+          query: TestListQuery(),
+          pagination: ForwardPagination(limitToFirst: 50),
+        );
+
+        final queryDef = listView.queryBuilder().build() as ListQueryDef;
+
+        expect(queryDef.limit, 50);
+      },
+    );
+
+    test('ForwardPagination with default limit should result in 100', () {
+      final listView = EntityListView(
+        'testList',
+        query: TestListQuery(),
+        pagination: ForwardPagination(),
+      );
+
+      final queryDef = listView.queryBuilder().build() as ListQueryDef;
+
+      expect(queryDef.limit, 100);
+    });
+
+    test(
+      'ReversePagination with positive limit should result in negative query def limit',
+      () {
+        final listView = EntityListView(
+          'testList',
+          query: TestListQuery(),
+          pagination: ReversePagination(limitToLast: 50),
+        );
+
+        final queryDef = listView.queryBuilder().build() as ListQueryDef;
+
+        expect(queryDef.limit, -50);
+      },
+    );
+
+    test('ReversePagination with default limit should result in -100', () {
+      final listView = EntityListView(
+        'testList',
+        query: TestListQuery(),
+        pagination: ReversePagination(),
+      );
+
+      final queryDef = listView.queryBuilder().build() as ListQueryDef;
+
+      expect(queryDef.limit, -100);
     });
   });
 }

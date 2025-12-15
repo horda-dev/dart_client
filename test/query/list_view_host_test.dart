@@ -341,5 +341,145 @@ void main() {
       expect(sub.pageId, isNotNull);
       expect(sub.pageId, subscribedListHost.pageId);
     });
+
+    test('should add item to end when toBeginning is false', () async {
+      var previousValue = <ListItem>[];
+
+      // Add first item with toBeginning: false
+      final change1 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-1',
+        value: 'item-value-1',
+        toBeginning: false,
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change1,
+        previousValue,
+      );
+
+      // Add second item with toBeginning: false
+      final change2 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-2',
+        value: 'item-value-2',
+        toBeginning: false,
+      );
+      final result = await listHost.project(
+        'actor-1',
+        'testList',
+        change2,
+        previousValue,
+      );
+
+      expect(result.length, 2);
+      expect(result[0].key, 'item-key-1');
+      expect(result[1].key, 'item-key-2');
+    });
+
+    test('should add item to beginning when toBeginning is true', () async {
+      var previousValue = <ListItem>[];
+
+      // Add first item with toBeginning: false
+      final change1 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-1',
+        value: 'item-value-1',
+        toBeginning: false,
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change1,
+        previousValue,
+      );
+
+      // Add second item with toBeginning: true
+      final change2 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-2',
+        value: 'item-value-2',
+        toBeginning: true,
+      );
+      final result = await listHost.project(
+        'actor-1',
+        'testList',
+        change2,
+        previousValue,
+      );
+
+      expect(result.length, 2);
+      expect(result[0].key, 'item-key-2'); // Should be at beginning
+      expect(result[1].key, 'item-key-1');
+    });
+
+    test('should maintain order when mixing toBeginning true/false', () async {
+      var previousValue = <ListItem>[];
+
+      // Add item 1 to end (toBeginning: false)
+      final change1 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-1',
+        value: 'item-value-1',
+        toBeginning: false,
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change1,
+        previousValue,
+      );
+
+      // Add item 2 to beginning (toBeginning: true)
+      final change2 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-2',
+        value: 'item-value-2',
+        toBeginning: true,
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change2,
+        previousValue,
+      );
+
+      // Add item 3 to end (toBeginning: false)
+      final change3 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-3',
+        value: 'item-value-3',
+        toBeginning: false,
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change3,
+        previousValue,
+      );
+
+      // Add item 4 to beginning (toBeginning: true)
+      final change4 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'item-key-4',
+        value: 'item-value-4',
+        toBeginning: true,
+      );
+      final result = await listHost.project(
+        'actor-1',
+        'testList',
+        change4,
+        previousValue,
+      );
+
+      expect(result.length, 4);
+      // Expected order: [4, 2, 1, 3]
+      // 1 added to end, 2 added to beginning, 3 added to end, 4 added to beginning
+      expect(result[0].key, 'item-key-4');
+      expect(result[1].key, 'item-key-2');
+      expect(result[2].key, 'item-key-1');
+      expect(result[3].key, 'item-key-3');
+    });
   });
 }
