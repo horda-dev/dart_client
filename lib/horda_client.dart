@@ -20,6 +20,8 @@ export 'src/query.dart'
     show
         EntityQuery,
         Pagination,
+        ForwardPagination,
+        ReversePagination,
         EmptyQuery,
         ViewConvertFunc,
         EntityView,
