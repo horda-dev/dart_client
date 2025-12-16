@@ -5,7 +5,6 @@ import 'package:collection/collection.dart';
 import 'package:horda_core/horda_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
-import 'package:xid/xid.dart';
 
 import 'connection.dart';
 import 'context.dart';
@@ -439,8 +438,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     required this.query,
     this.attrs = const [],
     this.pagination = const ForwardPagination(),
-  }) : _pageId = Xid.string(),
-       super(name, convert: (res) => List<ListItem>.from(res));
+  }) : super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
   final S query;
@@ -449,9 +447,6 @@ class EntityListView<S extends EntityQuery> extends EntityView {
 
   /// Optional pagination parameters for limiting the number of items.
   final Pagination pagination;
-
-  /// Auto-generated unique page identifier for tracking pagination state.
-  final String _pageId;
 
   @override
   ViewQueryDefBuilder queryBuilder() {
@@ -466,7 +461,6 @@ class EntityListView<S extends EntityQuery> extends EntityView {
           name,
           attrs,
           startAfter: startAfter,
-          pageId: _pageId,
           limit: limit,
         );
       case ReversePagination(:final endBefore):
@@ -475,7 +469,6 @@ class EntityListView<S extends EntityQuery> extends EntityView {
           name,
           attrs,
           endBefore: endBefore,
-          pageId: _pageId,
           limit: limit,
         );
     }
@@ -493,7 +486,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     ActorQueryHost parent,
     HordaClientSystem system,
   ) {
-    return ActorListViewHost(parentLoggerName, parent, this, system, _pageId);
+    return ActorListViewHost(parentLoggerName, parent, this, system);
   }
 }
 
@@ -1469,11 +1462,11 @@ class ActorListViewHost extends ActorViewHost {
     super.parent,
     super.view,
     super.system,
-    this.pageId,
   );
 
   /// Unique page identifier for tracking pagination state.
-  final String pageId;
+  /// Assigned from the query result during attach.
+  late final String pageId;
 
   /// Returns the list items with their XID keys and entity IDs.
   Iterable<ListItem> get items => super.value;
@@ -1598,6 +1591,8 @@ class ActorListViewHost extends ActorViewHost {
     assert(result.items.length == result.value.length);
 
     super.attach(actorId, result);
+
+    pageId = result.pageId;
 
     if (_children.isNotEmpty) {
       logger.warning('$actorId: list is not empty on attach');
