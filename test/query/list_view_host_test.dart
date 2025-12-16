@@ -67,7 +67,7 @@ void main() {
 
       // Attach the list view to get the host
       final result = QueryResultBuilder()
-        ..list('testList', {}, '1:0:0:0', (rb) {});
+        ..list('testList', {}, '1:0:0:0', 'test-page-id', (rb) {});
 
       queryHost.attach('actor-1', result.build());
 
@@ -319,7 +319,7 @@ void main() {
 
       // Attach the list view
       final result = QueryResultBuilder()
-        ..list('subscribedList', {}, '1:0:0:0', (rb) {});
+        ..list('subscribedList', {}, '1:0:0:0', 'test-page-id', (rb) {});
 
       subscribedHost.attach('actor-2', result.build());
 

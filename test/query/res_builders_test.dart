@@ -27,7 +27,7 @@ void main() {
             ..val('view22', 'value22', '22');
         },
       )
-      ..list('list1', attrs, '201', (rb) {
+      ..list('list1', attrs, '201', 'test-page-id', (rb) {
         rb
           ..item('xid-3', 'actor3', (rb) {
             rb
@@ -174,7 +174,7 @@ void main() {
             ..val('view22', 'value22', '22');
         },
       )
-      ..list('list1', attrs, '201', (rb) {
+      ..list('list1', attrs, '201', 'test-page-id', (rb) {
         rb
           ..item('xid-3', 'actor3', (rb) {
             rb
@@ -233,6 +233,7 @@ void main() {
             'view110': {'type': 'val', 'val': 'value4110', 'chid': '4110'},
           },
         ],
+        'pageId': 'test-page-id',
       },
     });
   });

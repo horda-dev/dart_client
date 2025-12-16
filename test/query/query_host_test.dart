@@ -92,7 +92,7 @@ void main() {
           ..val('view3', 'value3', '30:0:0:0')
           ..val('view4', 'value4', '40:0:0:0');
       })
-      ..list('list1', listAttrs, '100:0:0:0', (rb) {
+      ..list('list1', listAttrs, '100:0:0:0', 'test-page-id', (rb) {
         rb
           ..item('xid-1', 'actor3', (rb) {
             rb

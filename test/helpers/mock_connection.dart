@@ -109,7 +109,7 @@ class MockConnection extends ValueNotifier<HordaConnectionState>
         });
       } else if (viewDef is ListQueryDef) {
         // Create mock list view with nested query items
-        builder.list(viewName, {}, '1:0:0:0', (listBuilder) {
+        builder.list(viewName, {}, '1:0:0:0', 'mock-page-id', (listBuilder) {
           // Create 2 mock items with XID keys
           for (var i = 0; i < 2; i++) {
             final xidKey = 'xid-$actorId-$viewName-$i';
