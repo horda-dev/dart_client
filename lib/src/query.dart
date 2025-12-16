@@ -295,16 +295,16 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
 /// Example:
 /// ```dart
 /// // Forward pagination - get first 10 items
-/// ForwardPagination(limit: 10)
+/// ForwardPagination(limitToFirst: 10)
 ///
 /// // Forward pagination - get next 10 items after a cursor
-/// ForwardPagination(startAfter: 'item-key-123', limit: 10)
+/// ForwardPagination(startAfter: 'item-key-123', limitToFirst: 10)
 ///
 /// // Reverse pagination - get last 20 items
-/// ReversePagination(limit: 20)
+/// ReversePagination(limitToLast: 20)
 ///
 /// // Reverse pagination - get previous 20 items before a cursor
-/// ReversePagination(endBefore: 'item-key-456', limit: 20)
+/// ReversePagination(endBefore: 'item-key-456', limitToLast: 20)
 /// ```
 sealed class Pagination {
   const Pagination();
@@ -414,21 +414,21 @@ class ReversePagination extends Pagination {
 /// final userFriends = EntityListView(
 ///   'friends',
 ///   query: UserQuery(),
-///   pagination: ForwardPagination(limit: 20),
+///   pagination: ForwardPagination(limitToFirst: 20),
 /// );
 ///
 /// // Forward pagination - get next 20 friends after a cursor
 /// final userFriends = EntityListView(
 ///   'friends',
 ///   query: UserQuery(),
-///   pagination: ForwardPagination(startAfter: 'friend-key-123', limit: 20),
+///   pagination: ForwardPagination(startAfter: 'friend-key-123', limitToFirst: 20),
 /// );
 ///
 /// // Reverse pagination - get last 20 friends
 /// final userFriends = EntityListView(
 ///   'friends',
 ///   query: UserQuery(),
-///   pagination: ReversePagination(limit: 20),
+///   pagination: ReversePagination(limitToLast: 20),
 /// );
 /// ```
 class EntityListView<S extends EntityQuery> extends EntityView {
