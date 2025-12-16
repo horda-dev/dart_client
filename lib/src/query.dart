@@ -5,7 +5,6 @@ import 'package:collection/collection.dart';
 import 'package:horda_core/horda_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
-import 'package:xid/xid.dart';
 
 import 'connection.dart';
 import 'context.dart';
@@ -287,35 +286,116 @@ class EntityRefView<S extends EntityQuery> extends EntityView {
   }
 }
 
-/// Pagination parameters for list views.
+/// Base class for list view pagination.
 ///
 /// Specifies how to paginate list query results using cursor-based pagination.
-/// Use [limitToFirst] to limit the number of items returned, and optionally
-/// [startAfter] to continue from a specific cursor position.
+/// Use [ForwardPagination] for forward pagination or [ReversePagination] for
+/// reverse pagination.
 ///
 /// Example:
 /// ```dart
-/// // Get first 10 items
-/// Pagination(limitToFirst: 10)
+/// // Forward pagination - get first 10 items
+/// ForwardPagination(limitToFirst: 10)
 ///
-/// // Get next 10 items after a specific cursor
-/// Pagination(limitToFirst: 10, startAfter: 'item-key-123')
+/// // Forward pagination - get next 10 items after a cursor
+/// ForwardPagination(startAfter: 'item-key-123', limitToFirst: 10)
+///
+/// // Reverse pagination - get last 20 items
+/// ReversePagination(limitToLast: 20)
+///
+/// // Reverse pagination - get previous 20 items before a cursor
+/// ReversePagination(endBefore: 'item-key-456', limitToLast: 20)
 /// ```
-class Pagination {
-  /// Creates pagination parameters.
+sealed class Pagination {
+  const Pagination();
+
+  @visibleForTesting
+  int get queryDefLimit;
+}
+
+/// Forward pagination parameters for list views.
+///
+/// Retrieves items in forward order, optionally starting after a specific cursor.
+class ForwardPagination extends Pagination {
+  /// Creates forward pagination parameters.
   ///
-  /// [limitToFirst] specifies the maximum number of items to return (required).
   /// [startAfter] specifies the cursor to start after (defaults to empty string).
-  const Pagination({
-    required this.limitToFirst,
+  /// [limitToFirst] specifies the maximum number of items to return (defaults to 100).
+  const ForwardPagination({
     this.startAfter = '',
-  });
+    this.limitToFirst = 100,
+  }) : assert(limitToFirst > 0, 'limit must be positive');
 
   /// Cursor for pagination - start after this item key.
   final String startAfter;
 
   /// Maximum number of items to return.
   final int limitToFirst;
+
+  /// Returns the limit value to use in the query definition.
+  ///
+  /// Normalizes the [limitToFirst] value to ensure a positive limit:
+  /// - Returns 100 if [limitToFirst] is 0
+  /// - Returns the absolute value if [limitToFirst] is negative
+  /// - Returns [limitToFirst] as-is if positive
+  ///
+  /// This getter is exposed for testing to verify query definition construction.
+  @visibleForTesting
+  @override
+  int get queryDefLimit {
+    if (limitToFirst == 0) {
+      return 100;
+    }
+
+    if (limitToFirst < 0) {
+      return -limitToFirst;
+    }
+
+    return limitToFirst;
+  }
+}
+
+/// Reverse pagination parameters for list views.
+///
+/// Retrieves items in reverse order, optionally ending before a specific cursor.
+class ReversePagination extends Pagination {
+  /// Creates reverse pagination parameters.
+  ///
+  /// [endBefore] specifies the cursor to end before (defaults to empty string).
+  /// [limitToLast] specifies the maximum number of items to return (defaults to 100).
+  ReversePagination({
+    this.endBefore = '',
+    this.limitToLast = 100,
+  }) : assert(limitToLast > 0, 'limit must be positive');
+
+  /// Cursor for pagination - end before this item key.
+  final String endBefore;
+
+  /// Maximum number of items to return.
+  final int limitToLast;
+
+  /// Returns the limit value to use in the query definition for reverse pagination.
+  ///
+  /// Returns a negative limit value to indicate reverse order in the Horda protocol:
+  /// - Returns -100 if [limitToLast] is 0
+  /// - Returns the negated value if [limitToLast] is positive
+  /// - Returns [limitToLast] as-is if already negative
+  ///
+  /// In Horda's query protocol, negative limits indicate reverse pagination (last N items).
+  /// This getter is exposed for testing to verify query definition construction.
+  @visibleForTesting
+  @override
+  int get queryDefLimit {
+    if (limitToLast == 0) {
+      return -100;
+    }
+
+    if (limitToLast > 0) {
+      return -limitToLast;
+    }
+
+    return limitToLast;
+  }
 }
 
 /// View for accessing lists of related entities.
@@ -327,14 +407,28 @@ class Pagination {
 ///
 /// Example:
 /// ```dart
-/// // Without pagination
+/// // Without pagination (uses default ForwardPagination)
 /// final userFriends = EntityListView('friends', query: UserQuery());
 ///
-/// // With pagination - get first 20 friends
+/// // Forward pagination - get first 20 friends
 /// final userFriends = EntityListView(
 ///   'friends',
 ///   query: UserQuery(),
-///   pagination: Pagination(limitToFirst: 20),
+///   pagination: ForwardPagination(limitToFirst: 20),
+/// );
+///
+/// // Forward pagination - get next 20 friends after a cursor
+/// final userFriends = EntityListView(
+///   'friends',
+///   query: UserQuery(),
+///   pagination: ForwardPagination(startAfter: 'friend-key-123', limitToFirst: 20),
+/// );
+///
+/// // Reverse pagination - get last 20 friends
+/// final userFriends = EntityListView(
+///   'friends',
+///   query: UserQuery(),
+///   pagination: ReversePagination(limitToLast: 20),
 /// );
 /// ```
 class EntityListView<S extends EntityQuery> extends EntityView {
@@ -343,9 +437,8 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     super.subscribe,
     required this.query,
     this.attrs = const [],
-    this.pagination = const Pagination(limitToFirst: 100),
-  }) : _pageId = Xid.string(),
-       super(name, convert: (res) => List<ListItem>.from(res));
+    this.pagination = const ForwardPagination(),
+  }) : super(name, convert: (res) => List<ListItem>.from(res));
   // above we are creating a mutable list from immutable list coming from json
 
   final S query;
@@ -355,19 +448,30 @@ class EntityListView<S extends EntityQuery> extends EntityView {
   /// Optional pagination parameters for limiting the number of items.
   final Pagination pagination;
 
-  /// Auto-generated unique page identifier for tracking pagination state.
-  final String _pageId;
-
   @override
   ViewQueryDefBuilder queryBuilder() {
-    var qb = ListQueryDefBuilder(
-      query.entityName,
-      name,
-      attrs,
-      startAfter: pagination.startAfter,
-      pageId: _pageId,
-      length: pagination.limitToFirst,
-    );
+    final ListQueryDefBuilder qb;
+
+    final limit = pagination.queryDefLimit;
+
+    switch (pagination) {
+      case ForwardPagination(:final startAfter):
+        qb = ListQueryDefBuilder(
+          query.entityName,
+          name,
+          attrs,
+          startAfter: startAfter,
+          limit: limit,
+        );
+      case ReversePagination(:final endBefore):
+        qb = ListQueryDefBuilder(
+          query.entityName,
+          name,
+          attrs,
+          endBefore: endBefore,
+          limit: limit,
+        );
+    }
 
     for (var v in query.views.values) {
       qb.add(v.queryBuilder());
@@ -382,7 +486,7 @@ class EntityListView<S extends EntityQuery> extends EntityView {
     ActorQueryHost parent,
     HordaClientSystem system,
   ) {
-    return ActorListViewHost(parentLoggerName, parent, this, system, _pageId);
+    return ActorListViewHost(parentLoggerName, parent, this, system);
   }
 }
 
@@ -1358,11 +1462,11 @@ class ActorListViewHost extends ActorViewHost {
     super.parent,
     super.view,
     super.system,
-    this.pageId,
   );
 
   /// Unique page identifier for tracking pagination state.
-  final String pageId;
+  /// Assigned from the query result during attach.
+  late final String pageId;
 
   /// Returns the list items with their XID keys and entity IDs.
   Iterable<ListItem> get items => super.value;
@@ -1488,6 +1592,8 @@ class ActorListViewHost extends ActorViewHost {
 
     super.attach(actorId, result);
 
+    pageId = result.pageId;
+
     if (_children.isNotEmpty) {
       logger.warning('$actorId: list is not empty on attach');
 
@@ -1607,6 +1713,17 @@ class ActorListViewHost extends ActorViewHost {
 
       // Create ListItem from the change's key and value
       final listItem = ListItem(change.key, change.value);
+
+      if (previousValue.isEmpty) {
+        return previousValue..add(listItem);
+      }
+
+      // Use first list item key to decide if item should be appended to beginning or end of the list.
+      final first = previousValue.first as ListItem;
+      if (listItem.key < first.key) {
+        return previousValue..insert(0, listItem);
+      }
+
       return previousValue..add(listItem);
     }
 

@@ -67,7 +67,7 @@ void main() {
 
       // Attach the list view to get the host
       final result = QueryResultBuilder()
-        ..list('testList', {}, '1:0:0:0', (rb) {});
+        ..list('testList', {}, '1:0:0:0', 'test-page-id', (rb) {});
 
       queryHost.attach('actor-1', result.build());
 
@@ -319,7 +319,7 @@ void main() {
 
       // Attach the list view
       final result = QueryResultBuilder()
-        ..list('subscribedList', {}, '1:0:0:0', (rb) {});
+        ..list('subscribedList', {}, '1:0:0:0', 'test-page-id', (rb) {});
 
       subscribedHost.attach('actor-2', result.build());
 
@@ -340,6 +340,138 @@ void main() {
       expect(sub.name, 'subscribedList');
       expect(sub.pageId, isNotNull);
       expect(sub.pageId, subscribedListHost.pageId);
+    });
+
+    test('should add item to end when key is greater than first', () async {
+      var previousValue = <ListItem>[];
+
+      // Add first item with key 'a'
+      final change1 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'a',
+        value: 'item-value-a',
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change1,
+        previousValue,
+      );
+
+      // Add second item with key 'b' (greater than 'a')
+      final change2 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'b',
+        value: 'item-value-b',
+      );
+      final result = await listHost.project(
+        'actor-1',
+        'testList',
+        change2,
+        previousValue,
+      );
+
+      expect(result.length, 2);
+      expect(result[0].key, 'a');
+      expect(result[1].key, 'b');
+    });
+
+    test('should add item to beginning when key is less than first', () async {
+      var previousValue = <ListItem>[];
+
+      // Add first item with key 'b'
+      final change1 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'b',
+        value: 'item-value-b',
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change1,
+        previousValue,
+      );
+
+      // Add second item with key 'a' (less than 'b')
+      final change2 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'a',
+        value: 'item-value-a',
+      );
+      final result = await listHost.project(
+        'actor-1',
+        'testList',
+        change2,
+        previousValue,
+      );
+
+      expect(result.length, 2);
+      expect(result[0].key, 'a'); // Should be at beginning
+      expect(result[1].key, 'b');
+    });
+
+    test('should maintain correct order based on key comparison', () async {
+      var previousValue = <ListItem>[];
+
+      // Add item with key 'c'
+      final change1 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'c',
+        value: 'item-value-c',
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change1,
+        previousValue,
+      );
+
+      // Add item with key 'a' (less than 'c', should go to beginning)
+      final change2 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'a',
+        value: 'item-value-a',
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change2,
+        previousValue,
+      );
+
+      // Add item with key 'd' (greater than 'a', should go to end)
+      final change3 = ListPageItemAdded(
+        pageId: pageId,
+        key: 'd',
+        value: 'item-value-d',
+      );
+      previousValue = await listHost.project(
+        'actor-1',
+        'testList',
+        change3,
+        previousValue,
+      );
+
+      // Add item with key '1' (less than 'a', should go to beginning)
+      final change4 = ListPageItemAdded(
+        pageId: pageId,
+        key: '1',
+        value: 'item-value-1',
+      );
+      final result = await listHost.project(
+        'actor-1',
+        'testList',
+        change4,
+        previousValue,
+      );
+
+      expect(result.length, 4);
+      // Expected order: ['1', 'a', 'c', 'd']
+      // Logic: new key < first key → insert at beginning, else add to end
+      expect(result[0].key, '1');
+      expect(result[1].key, 'a');
+      expect(result[2].key, 'c');
+      expect(result[3].key, 'd');
     });
   });
 }

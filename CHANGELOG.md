@@ -1,3 +1,16 @@
+## 0.28.0
+
+- **FEAT**: Add reverse pagination support for list views
+  - New `ReversePagination` class for paginating backwards through lists
+  - `ForwardPagination` class replaces the original `Pagination` parameters
+  - `Pagination` is now a sealed base class with `ForwardPagination` and `ReversePagination` subtypes
+  - Export `ForwardPagination` and `ReversePagination` from main library
+- **BREAKING CHANGE**: `Pagination` is now a sealed class - use `ForwardPagination` or `ReversePagination` instead
+  - Migration: Replace `Pagination(startAfter: x, limitToFirst: y)` with `ForwardPagination(startAfter: x, limitToFirst: y)`
+  - Default pagination in `EntityListView` is now `ForwardPagination()` instead of `Pagination(limitToFirst: 100)`
+- **BREAKING CHANGE**: Remove `xid` dependency - page IDs are now assigned from query results instead of client-generated
+- **FEAT**: Use horda_core 0.20.0
+
 ## 0.27.0
 
 - **BREAKING CHANGE**: List views now return `List<ListItem>` instead of `List<EntityId>` - list items now have both a `key` (XID string) and `value` (EntityId)
