@@ -342,15 +342,14 @@ void main() {
       expect(sub.pageId, subscribedListHost.pageId);
     });
 
-    test('should add item to end when toBeginning is false', () async {
+    test('should add item to end when key is greater than first', () async {
       var previousValue = <ListItem>[];
 
-      // Add first item with toBeginning: false
+      // Add first item with key 'a'
       final change1 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
-        toBeginning: false,
+        key: 'a',
+        value: 'item-value-a',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -359,12 +358,11 @@ void main() {
         previousValue,
       );
 
-      // Add second item with toBeginning: false
+      // Add second item with key 'b' (greater than 'a')
       final change2 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-2',
-        value: 'item-value-2',
-        toBeginning: false,
+        key: 'b',
+        value: 'item-value-b',
       );
       final result = await listHost.project(
         'actor-1',
@@ -374,19 +372,18 @@ void main() {
       );
 
       expect(result.length, 2);
-      expect(result[0].key, 'item-key-1');
-      expect(result[1].key, 'item-key-2');
+      expect(result[0].key, 'a');
+      expect(result[1].key, 'b');
     });
 
-    test('should add item to beginning when toBeginning is true', () async {
+    test('should add item to beginning when key is less than first', () async {
       var previousValue = <ListItem>[];
 
-      // Add first item with toBeginning: false
+      // Add first item with key 'b'
       final change1 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
-        toBeginning: false,
+        key: 'b',
+        value: 'item-value-b',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -395,12 +392,11 @@ void main() {
         previousValue,
       );
 
-      // Add second item with toBeginning: true
+      // Add second item with key 'a' (less than 'b')
       final change2 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-2',
-        value: 'item-value-2',
-        toBeginning: true,
+        key: 'a',
+        value: 'item-value-a',
       );
       final result = await listHost.project(
         'actor-1',
@@ -410,19 +406,18 @@ void main() {
       );
 
       expect(result.length, 2);
-      expect(result[0].key, 'item-key-2'); // Should be at beginning
-      expect(result[1].key, 'item-key-1');
+      expect(result[0].key, 'a'); // Should be at beginning
+      expect(result[1].key, 'b');
     });
 
-    test('should maintain order when mixing toBeginning true/false', () async {
+    test('should maintain correct order based on key comparison', () async {
       var previousValue = <ListItem>[];
 
-      // Add item 1 to end (toBeginning: false)
+      // Add item with key 'c'
       final change1 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
-        toBeginning: false,
+        key: 'c',
+        value: 'item-value-c',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -431,12 +426,11 @@ void main() {
         previousValue,
       );
 
-      // Add item 2 to beginning (toBeginning: true)
+      // Add item with key 'a' (less than 'c', should go to beginning)
       final change2 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-2',
-        value: 'item-value-2',
-        toBeginning: true,
+        key: 'a',
+        value: 'item-value-a',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -445,12 +439,11 @@ void main() {
         previousValue,
       );
 
-      // Add item 3 to end (toBeginning: false)
+      // Add item with key 'd' (greater than 'a', should go to end)
       final change3 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-3',
-        value: 'item-value-3',
-        toBeginning: false,
+        key: 'd',
+        value: 'item-value-d',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -459,12 +452,11 @@ void main() {
         previousValue,
       );
 
-      // Add item 4 to beginning (toBeginning: true)
+      // Add item with key '1' (less than 'a', should go to beginning)
       final change4 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-4',
-        value: 'item-value-4',
-        toBeginning: true,
+        key: '1',
+        value: 'item-value-1',
       );
       final result = await listHost.project(
         'actor-1',
@@ -474,12 +466,12 @@ void main() {
       );
 
       expect(result.length, 4);
-      // Expected order: [4, 2, 1, 3]
-      // 1 added to end, 2 added to beginning, 3 added to end, 4 added to beginning
-      expect(result[0].key, 'item-key-4');
-      expect(result[1].key, 'item-key-2');
-      expect(result[2].key, 'item-key-1');
-      expect(result[3].key, 'item-key-3');
+      // Expected order: ['1', 'a', 'c', 'd']
+      // Logic: new key < first key → insert at beginning, else add to end
+      expect(result[0].key, '1');
+      expect(result[1].key, 'a');
+      expect(result[2].key, 'c');
+      expect(result[3].key, 'd');
     });
   });
 }

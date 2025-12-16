@@ -1714,8 +1714,13 @@ class ActorListViewHost extends ActorViewHost {
       // Create ListItem from the change's key and value
       final listItem = ListItem(change.key, change.value);
 
-      // Insert at beginning or append to end based on toBeginning flag
-      if (change.toBeginning) {
+      if (previousValue.isEmpty) {
+        return previousValue..add(listItem);
+      }
+
+      // Use first list item key to decide if item should be appended to beginning or end of the list.
+      final first = previousValue.first as ListItem;
+      if (listItem.key < first.key) {
         return previousValue..insert(0, listItem);
       }
 
