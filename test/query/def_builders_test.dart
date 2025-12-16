@@ -128,6 +128,9 @@ void main() {
             },
           },
           'attrs': ['attr3', 'attr4'],
+          'startAfter': '',
+          'endBefore': '',
+          'limit': 0,
         },
       },
     });
@@ -160,6 +163,9 @@ void main() {
             },
           },
           'attrs': ['attr3', 'attr4'],
+          'startAfter': '',
+          'endBefore': '',
+          'limit': 0,
         },
       },
     };
@@ -195,6 +201,9 @@ void main() {
               'view6': {'type': 'val'},
             },
           },
+          'startAfter': '',
+          'endBefore': '',
+          'limit': 0,
         },
       },
     };
@@ -308,6 +317,9 @@ void main() {
               'view32': {'type': 'val'},
             },
           },
+          'startAfter': '',
+          'endBefore': '',
+          'limit': 0,
         },
       },
     });
