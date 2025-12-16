@@ -10,9 +10,7 @@ environment:
 dependencies:
   async: ^2.13.0
   collection: ^1.19.1
-  # horda_core: ^0.19.0
-  horda_core:
-    path: ../dart_core
+  horda_core: ^0.20.0
   flutter:
     sdk: flutter
   json_annotation: ^4.9.0
