@@ -560,6 +560,10 @@ class ActorQueryHost {
     child.watch(path, cb);
   }
 
+  /// Note that on reconnect the hosts are not removed/stopped. The queries are re-run and the view hosts are re-attached.
+  /// Account for that when updating [run] and [attach] logic.
+  ///
+  /// Ref: [FluirSystemProviderElement._reconnectionVisitor]
   Future<void> run(EntityId actorId) async {
     final qdef = query.queryBuilder().build();
     final queryKey = '$actorId/${query.name}';
@@ -629,6 +633,9 @@ class ActorQueryHost {
     return subs;
   }
 
+  /// Query host can be re-attached due to a reconnect.
+  ///
+  /// Ref: [FluirSystemProviderElement._reconnectionVisitor]
   void attach(EntityId actorId, QueryResult result) {
     logger.fine('${this.actorId}: attaching to $actorId...');
 
@@ -813,6 +820,10 @@ abstract class ActorViewHost {
     _watcher = cb;
   }
 
+  /// Note that on reconnect the hosts are not removed/stopped. The queries are re-run and the view hosts are re-attached.
+  /// Account for that when updating [ActorQueryHost.run] and [attach] logic.
+  ///
+  /// Ref: [FluirSystemProviderElement._reconnectionVisitor]
   void attach(EntityId actorId, ViewQueryResult result) {
     logger.fine('${this.actorId}: attaching to $actorId...');
 
@@ -1466,7 +1477,9 @@ class ActorListViewHost extends ActorViewHost {
 
   /// Unique page identifier for tracking pagination state.
   /// Assigned from the query result during attach.
-  late final String pageId;
+  String _pageId = '';
+
+  String get pageId => _pageId;
 
   /// Returns the list items with their XID keys and entity IDs.
   Iterable<ListItem> get items => super.value;
@@ -1592,7 +1605,12 @@ class ActorListViewHost extends ActorViewHost {
 
     super.attach(actorId, result);
 
-    pageId = result.pageId;
+    _pageId = result.pageId;
+    if (_pageId.isEmpty) {
+      logger.warning(
+        '$actorId: received empty page id from query result, list view will not project changes',
+      );
+    }
 
     if (_children.isNotEmpty) {
       logger.warning('$actorId: list is not empty on attach');
@@ -1686,7 +1704,7 @@ class ActorListViewHost extends ActorViewHost {
       return previousValue;
     }
 
-    if (change.pageId != pageId) {
+    if (change.pageId != _pageId) {
       logger.fine(
         '$id: skipped page sync change of another page $change',
       );
@@ -1798,9 +1816,13 @@ class ActorListViewHost extends ActorViewHost {
 
     final subs = <ActorViewSub>[];
 
+    if (_pageId.isEmpty) {
+      logger.warning('$actorId: sending unsubscribe with empty page id');
+    }
+
     if (view.subscribe) {
       subs.add(
-        ActorViewSub(entityName, actorId!, view.name, pageId),
+        ActorViewSub(entityName, actorId!, view.name, _pageId),
       );
     }
 
