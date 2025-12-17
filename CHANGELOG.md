@@ -1,3 +1,7 @@
+## 0.28.1
+
+- **FIX**: Fix queries with list views breaking on reconnect.
+
 ## 0.28.0
 
 - **FEAT**: Add reverse pagination support for list views
