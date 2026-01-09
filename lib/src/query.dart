@@ -566,7 +566,6 @@ class ActorQueryHost {
   /// Ref: [FluirSystemProviderElement._reconnectionVisitor]
   Future<void> run(EntityId actorId) async {
     final qdef = query.queryBuilder().build();
-    final queryKey = '$actorId/${query.name}';
 
     logger.fine('$actorId: running query...');
     logger.finer('$actorId: running query: ${qdef.toJson()}');
@@ -577,7 +576,6 @@ class ActorQueryHost {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
       final result = await system.queryAndSubscribe(
-        queryKey: queryKey,
         entityId: actorId,
         def: qdef,
       );
@@ -595,7 +593,7 @@ class ActorQueryHost {
       // Finalize query subscriptions
       // This will publish empty change envelopes for already-subscribed views
       // and mark the in-flight query as complete
-      system.finalizeQuerySubscriptions(queryKey, subscriptions());
+      system.finalizeQuerySubscriptions(qdef, subscriptions());
 
       logger.info('$actorId: ran');
     } catch (e) {
@@ -606,10 +604,12 @@ class ActorQueryHost {
   }
 
   Future<void> unsubscribe() async {
-    final queryKey = '$actorId/${query.name}';
     logger.fine('$actorId: unsubscribing...');
 
-    await system.unsubscribeViews(queryKey, subscriptions());
+    await system.unsubscribeViews(
+      query.queryBuilder().build(),
+      subscriptions(),
+    );
 
     logger.info('$actorId: unsubscribed');
   }
@@ -1791,8 +1791,9 @@ class ActorListViewHost extends ActorViewHost {
 
       logger.fine('unsubscribing on ListViewCleared...');
 
-      final queryKey = '$actorId/${parent.query.name}';
-      system.unsubscribeViews(queryKey, subs);
+      // Build QueryDef for the nested query used by list items
+      final nestedQuery = view.query.queryBuilder().build();
+      system.unsubscribeViews(nestedQuery, subs);
 
       logger.info('unsubscribed on ListViewCleared');
 
@@ -2469,8 +2470,9 @@ class AttributesHost {
 
   Future<void> unsubscribe() async {
     logger.fine('unsubscribing attrHost $debugId...');
-    // No query key for AttributesHost
-    await system.unsubscribeViews('', subscriptions());
+    // Use empty QueryDef for AttributesHost (attributes have empty entityName)
+    final emptyDef = EmptyQuery().queryBuilder().build();
+    await system.unsubscribeViews(emptyDef, subscriptions());
     logger.fine('unsubscribed attrHost $debugId');
   }
 
