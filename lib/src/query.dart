@@ -606,7 +606,10 @@ class ActorQueryHost {
   Future<void> unsubscribe() async {
     logger.fine('$actorId: unsubscribing...');
 
-    await system.unsubscribeViews(query.queryBuilder().build(), subscriptions());
+    await system.unsubscribeViews(
+      query.queryBuilder().build(),
+      subscriptions(),
+    );
 
     logger.info('$actorId: unsubscribed');
   }
@@ -724,12 +727,6 @@ class ActorQueryHost {
     logger.fine(
       'Reported view $viewName as ready. Yet to be loaded children: $_notLoadedChildren',
     );
-
-    if (query.name == 'ThreadQuery' || query.name == 'ParentSpeechQuery') {
-      print(
-        '${query.name}: Reported view $viewName as ready. Yet to be loaded children: $_notLoadedChildren',
-      );
-    }
 
     if (_notLoadedChildren.isEmpty) {
       _changeState(EntityQueryState.loaded);
@@ -873,10 +870,6 @@ abstract class ActorViewHost {
         )
         .listen((event) => _project(event, latestStoredChangeId));
 
-    if (parent.query.name == "_ParentSpeechQuery") {
-      print('${debugId}: subscribed to changes');
-    }
-
     logger.info('$actorId: attached');
   }
 
@@ -993,10 +986,6 @@ abstract class ActorViewHost {
     while (_inbox.isNotEmpty) {
       final env = _inbox.removeFirst();
       logger.fine('$actorId: projecting $env...');
-
-      if (parent.query.name == '_ParentSpeechQuery') {
-        print('_ParentSpeechQuery: Got change: ${env.sourceId}');
-      }
 
       if (!isAttached) {
         logger.warning('$actorId detached view is not projecting $env');

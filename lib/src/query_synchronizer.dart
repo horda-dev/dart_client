@@ -206,8 +206,6 @@ class QuerySynchronizer {
       return;
     }
 
-    print('Intersecting queries detected');
-
     _logger.info(
       'Deferring unsubscribe for ${def.entityName}, '
       '${intersectingCompleters.length} intersecting queries in flight',
