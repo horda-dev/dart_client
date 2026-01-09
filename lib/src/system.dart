@@ -188,10 +188,10 @@ class HordaClientSystem {
   ///
   /// This should be called AFTER [ActorViewHost.attach], when [ActorViewHost] has set up change stream listeners.
   ///
-  /// [queryKey] - Query identifier in format "entityId/queryName"
+  /// [def] - The QueryDef that was executed
   /// [subs] - Subscriptions collected from [ActorQueryHost] after attach
   void finalizeQuerySubscriptions(
-    String queryKey,
+    QueryDef def,
     Iterable<ActorViewSub> subs,
   ) {
     final readyToSub = _incViewSubCount(subs);
@@ -211,7 +211,7 @@ class HordaClientSystem {
     }
 
     // Mark query tracking as complete
-    _querySynchronizer.completeQuery(queryKey);
+    _querySynchronizer.completeQuery(def);
   }
 
   Future<QueryResult> query({
@@ -222,14 +222,13 @@ class HordaClientSystem {
   }
 
   Future<QueryResult> queryAndSubscribe({
-    required String queryKey,
     required String entityId,
     required QueryDef def,
   }) async {
     logger.fine('$entityId: atomic query and subscribe...');
 
     // Register in-flight query
-    final completer = _querySynchronizer.registerQuery(queryKey);
+    final completer = _querySynchronizer.registerQuery(def);
 
     try {
       final result = await conn.queryAndSubscribe(
@@ -245,7 +244,7 @@ class HordaClientSystem {
     } finally {
       // Note: completer is completed in finalizeQuerySubscriptions()
       // We only clean up here if the query failed before finalization
-      _querySynchronizer.cleanupQuery(queryKey, completer);
+      _querySynchronizer.cleanupQuery(def, completer);
     }
   }
 
@@ -291,11 +290,11 @@ class HordaClientSystem {
   }
 
   Future<void> unsubscribeViews(
-    String queryKey,
+    QueryDef def,
     Iterable<ActorViewSub> subs,
   ) async {
-    // Wait for an identical in-flight query to finish, if one exists
-    await _querySynchronizer.waitForQuery(queryKey);
+    // Wait for any intersecting in-flight queries to finish
+    await _querySynchronizer.waitForQuery(def);
 
     final readyToUnsub = _decViewSubCount(subs);
 
