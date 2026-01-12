@@ -1,6 +1,6 @@
 name: horda_client
 description: Connect your Flutter app to backends built with the Horda platform.
-version: 0.28.1
+version: 0.28.2
 homepage: https://github.com/horda-ai/dart_client
 
 environment:
