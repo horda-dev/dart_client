@@ -1,3 +1,7 @@
+## 0.28.2
+
+- **FIX**: Temporary fix for infinite loading of concurrent intersecting queries.
+
 ## 0.28.1
 
 - **FIX**: Fix queries with list views breaking on reconnect.
