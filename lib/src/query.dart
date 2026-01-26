@@ -1531,7 +1531,7 @@ class ActorListViewHost extends ActorViewHost {
     }
 
     final item = items.elementAt(index);
-    final itemId = item.value;
+    final itemId = item.refId;
     var host = _children[itemId];
     if (host == null) {
       throw FluirError('no item host found for $itemId for $debugId');
@@ -1596,7 +1596,7 @@ class ActorListViewHost extends ActorViewHost {
     final attrs = result.attrs;
     for (final pair in IterableZip([result.value, result.items])) {
       final listItem = pair[0] as ListItem;
-      final itemId = listItem.value;
+      final itemId = listItem.refId;
       final result = pair[1] as QueryResult;
 
       final itemHost = view.query.childHost(
@@ -1682,27 +1682,27 @@ class ActorListViewHost extends ActorViewHost {
         view.query,
         system,
       );
-      await host.run(change.value);
+      await host.run(change.refId);
 
-      _children[change.value] = host;
-      _attrHosts[change.value] = AttributesHost(
+      _children[change.refId] = host;
+      _attrHosts[change.refId] = AttributesHost(
         parentLoggerName,
         _watcher,
         view.name,
         view.attrs,
         system,
-      )..start(id, change.value);
+      )..start(id, change.refId);
 
-      // Create ListItem from the change's key and value
-      final listItem = ListItem(change.key, change.value);
+      // Create ListItem from the change's pos and refId
+      final listItem = ListItem(change.pos, change.refId);
 
       if (previousValue.isEmpty) {
         return previousValue..add(listItem);
       }
 
-      // Use first list item key to decide if item should be appended to beginning or end of the list.
+      // Use first list item position to decide if item should be appended to beginning or end of the list.
       final first = previousValue.first as ListItem;
-      if (listItem.key < first.key) {
+      if (listItem.position < first.position) {
         return previousValue..insert(0, listItem);
       }
 
@@ -1710,17 +1710,17 @@ class ActorListViewHost extends ActorViewHost {
     }
 
     if (change is ListPageItemRemoved) {
-      // Find the item by its key
+      // Find the item by its position
       final item = (previousValue as List<ListItem>).firstWhereOrNull(
-        (item) => item.key == change.key,
+        (item) => item.position == change.pos,
       );
 
       if (item == null) {
-        logger.fine('skipped removing non-existent key $change');
+        logger.fine('skipped removing non-existent position $change');
         return previousValue;
       }
 
-      final itemId = item.value;
+      final itemId = item.refId;
 
       assert(() {
         return _children.containsKey(itemId) && _attrHosts.containsKey(itemId);
@@ -1732,8 +1732,8 @@ class ActorListViewHost extends ActorViewHost {
       await host!.unsubscribe();
       host.stop();
 
-      // Remove the ListItem by its key
-      previousValue.removeWhere((item) => item.key == change.key);
+      // Remove the ListItem by its position
+      previousValue.removeWhere((item) => item.position == change.pos);
       return previousValue;
     }
 
