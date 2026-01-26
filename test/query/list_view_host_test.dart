@@ -82,8 +82,8 @@ void main() {
     test('should add item with ListPageItemAdded', () async {
       final change = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
+        pos: 1.0,
+        refId: 'item-value-1',
       );
 
       final previousValue = <ListItem>[];
@@ -96,16 +96,16 @@ void main() {
 
       expect(result, isA<List<ListItem>>());
       expect(result.length, 1);
-      expect(result[0].key, 'item-key-1');
-      expect(result[0].value, 'item-value-1');
+      expect(result[0].position, 1.0);
+      expect(result[0].refId, 'item-value-1');
     });
 
     test('should remove item with ListPageItemRemoved', () async {
       // Setup: Add an item first
       final addChange = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
+        pos: 1.0,
+        refId: 'item-value-1',
       );
 
       var previousValue = <ListItem>[];
@@ -121,7 +121,7 @@ void main() {
       // Now remove it
       final removeChange = ListPageItemRemoved(
         pageId: pageId,
-        key: 'item-key-1',
+        pos: 1.0,
       );
 
       final result = await listHost.project(
@@ -142,8 +142,8 @@ void main() {
       for (var i = 1; i <= 3; i++) {
         final change = ListPageItemAdded(
           pageId: pageId,
-          key: 'item-key-$i',
-          value: 'item-value-$i',
+          pos: i.toDouble(),
+          refId: 'item-value-$i',
         );
         previousValue = await listHost.project(
           'actor-1',
@@ -175,8 +175,8 @@ void main() {
       // Add an item with correct pageId
       final addChange = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
+        pos: 1.0,
+        refId: 'item-value-1',
       );
 
       var previousValue = <ListItem>[];
@@ -192,8 +192,8 @@ void main() {
       // Try to add another item with wrong pageId
       final wrongPageIdChange = ListPageItemAdded(
         pageId: differentPageId,
-        key: 'item-key-2',
-        value: 'item-value-2',
+        pos: 2.0,
+        refId: 'item-value-2',
       );
 
       final result = await listHost.project(
@@ -206,7 +206,7 @@ void main() {
       // Should return unchanged list
       expect(result, isA<List<ListItem>>());
       expect(result.length, 1);
-      expect(result[0].key, 'item-key-1');
+      expect(result[0].position, 1.0);
     });
 
     test('should handle non-ListPageChange with warning', () async {
@@ -232,8 +232,8 @@ void main() {
       // Add first item
       final change1 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-1',
-        value: 'item-value-1',
+        pos: 1.0,
+        refId: 'item-value-1',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -245,8 +245,8 @@ void main() {
       // Add second item
       final change2 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-2',
-        value: 'item-value-2',
+        pos: 2.0,
+        refId: 'item-value-2',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -258,8 +258,8 @@ void main() {
       // Add third item
       final change3 = ListPageItemAdded(
         pageId: pageId,
-        key: 'item-key-3',
-        value: 'item-value-3',
+        pos: 3.0,
+        refId: 'item-value-3',
       );
       final result = await listHost.project(
         'actor-1',
@@ -269,9 +269,9 @@ void main() {
       );
 
       expect(result.length, 3);
-      expect(result[0].key, 'item-key-1');
-      expect(result[1].key, 'item-key-2');
-      expect(result[2].key, 'item-key-3');
+      expect(result[0].position, 1.0);
+      expect(result[1].position, 2.0);
+      expect(result[2].position, 3.0);
     });
 
     test('should remove item from middle of list', () async {
@@ -281,8 +281,8 @@ void main() {
       for (var i = 1; i <= 3; i++) {
         final change = ListPageItemAdded(
           pageId: pageId,
-          key: 'item-key-$i',
-          value: 'item-value-$i',
+          pos: i.toDouble(),
+          refId: 'item-value-$i',
         );
         previousValue = await listHost.project(
           'actor-1',
@@ -294,10 +294,10 @@ void main() {
 
       expect(previousValue.length, 3);
 
-      // Remove the middle item (key-2)
+      // Remove the middle item (pos 2.0)
       final removeChange = ListPageItemRemoved(
         pageId: pageId,
-        key: 'item-key-2',
+        pos: 2.0,
       );
 
       final result = await listHost.project(
@@ -308,8 +308,8 @@ void main() {
       );
 
       expect(result.length, 2);
-      expect(result[0].key, 'item-key-1');
-      expect(result[1].key, 'item-key-3');
+      expect(result[0].position, 1.0);
+      expect(result[1].position, 3.0);
     });
 
     test('should include pageId in subscriptions()', () {
@@ -342,14 +342,88 @@ void main() {
       expect(sub.pageId, subscribedListHost.pageId);
     });
 
-    test('should add item to end when key is greater than first', () async {
+    test(
+      'should add item to end when position is greater than first',
+      () async {
+        var previousValue = <ListItem>[];
+
+        // Add first item with position 1.0
+        final change1 = ListPageItemAdded(
+          pageId: pageId,
+          pos: 1.0,
+          refId: 'item-value-a',
+        );
+        previousValue = await listHost.project(
+          'actor-1',
+          'testList',
+          change1,
+          previousValue,
+        );
+
+        // Add second item with position 2.0 (greater than 1.0)
+        final change2 = ListPageItemAdded(
+          pageId: pageId,
+          pos: 2.0,
+          refId: 'item-value-b',
+        );
+        final result = await listHost.project(
+          'actor-1',
+          'testList',
+          change2,
+          previousValue,
+        );
+
+        expect(result.length, 2);
+        expect(result[0].position, 1.0);
+        expect(result[1].position, 2.0);
+      },
+    );
+
+    test(
+      'should add item to beginning when position is less than first',
+      () async {
+        var previousValue = <ListItem>[];
+
+        // Add first item with position 2.0
+        final change1 = ListPageItemAdded(
+          pageId: pageId,
+          pos: 2.0,
+          refId: 'item-value-b',
+        );
+        previousValue = await listHost.project(
+          'actor-1',
+          'testList',
+          change1,
+          previousValue,
+        );
+
+        // Add second item with position 1.0 (less than 2.0)
+        final change2 = ListPageItemAdded(
+          pageId: pageId,
+          pos: 1.0,
+          refId: 'item-value-a',
+        );
+        final result = await listHost.project(
+          'actor-1',
+          'testList',
+          change2,
+          previousValue,
+        );
+
+        expect(result.length, 2);
+        expect(result[0].position, 1.0); // Should be at beginning
+        expect(result[1].position, 2.0);
+      },
+    );
+
+    test('should maintain correct order based on position comparison', () async {
       var previousValue = <ListItem>[];
 
-      // Add first item with key 'a'
+      // Add item with position 3.0
       final change1 = ListPageItemAdded(
         pageId: pageId,
-        key: 'a',
-        value: 'item-value-a',
+        pos: 3.0,
+        refId: 'item-value-c',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -358,79 +432,11 @@ void main() {
         previousValue,
       );
 
-      // Add second item with key 'b' (greater than 'a')
+      // Add item with position 1.0 (less than 3.0, should go to beginning)
       final change2 = ListPageItemAdded(
         pageId: pageId,
-        key: 'b',
-        value: 'item-value-b',
-      );
-      final result = await listHost.project(
-        'actor-1',
-        'testList',
-        change2,
-        previousValue,
-      );
-
-      expect(result.length, 2);
-      expect(result[0].key, 'a');
-      expect(result[1].key, 'b');
-    });
-
-    test('should add item to beginning when key is less than first', () async {
-      var previousValue = <ListItem>[];
-
-      // Add first item with key 'b'
-      final change1 = ListPageItemAdded(
-        pageId: pageId,
-        key: 'b',
-        value: 'item-value-b',
-      );
-      previousValue = await listHost.project(
-        'actor-1',
-        'testList',
-        change1,
-        previousValue,
-      );
-
-      // Add second item with key 'a' (less than 'b')
-      final change2 = ListPageItemAdded(
-        pageId: pageId,
-        key: 'a',
-        value: 'item-value-a',
-      );
-      final result = await listHost.project(
-        'actor-1',
-        'testList',
-        change2,
-        previousValue,
-      );
-
-      expect(result.length, 2);
-      expect(result[0].key, 'a'); // Should be at beginning
-      expect(result[1].key, 'b');
-    });
-
-    test('should maintain correct order based on key comparison', () async {
-      var previousValue = <ListItem>[];
-
-      // Add item with key 'c'
-      final change1 = ListPageItemAdded(
-        pageId: pageId,
-        key: 'c',
-        value: 'item-value-c',
-      );
-      previousValue = await listHost.project(
-        'actor-1',
-        'testList',
-        change1,
-        previousValue,
-      );
-
-      // Add item with key 'a' (less than 'c', should go to beginning)
-      final change2 = ListPageItemAdded(
-        pageId: pageId,
-        key: 'a',
-        value: 'item-value-a',
+        pos: 1.0,
+        refId: 'item-value-a',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -439,11 +445,11 @@ void main() {
         previousValue,
       );
 
-      // Add item with key 'd' (greater than 'a', should go to end)
+      // Add item with position 4.0 (greater than 1.0, should go to end)
       final change3 = ListPageItemAdded(
         pageId: pageId,
-        key: 'd',
-        value: 'item-value-d',
+        pos: 4.0,
+        refId: 'item-value-d',
       );
       previousValue = await listHost.project(
         'actor-1',
@@ -452,11 +458,11 @@ void main() {
         previousValue,
       );
 
-      // Add item with key '1' (less than 'a', should go to beginning)
+      // Add item with position 0.5 (less than 1.0, should go to beginning)
       final change4 = ListPageItemAdded(
         pageId: pageId,
-        key: '1',
-        value: 'item-value-1',
+        pos: 0.5,
+        refId: 'item-value-1',
       );
       final result = await listHost.project(
         'actor-1',
@@ -466,12 +472,12 @@ void main() {
       );
 
       expect(result.length, 4);
-      // Expected order: ['1', 'a', 'c', 'd']
-      // Logic: new key < first key → insert at beginning, else add to end
-      expect(result[0].key, '1');
-      expect(result[1].key, 'a');
-      expect(result[2].key, 'c');
-      expect(result[3].key, 'd');
+      // Expected order: [0.5, 1.0, 3.0, 4.0]
+      // Logic: new position < first position → insert at beginning, else add to end
+      expect(result[0].position, 0.5);
+      expect(result[1].position, 1.0);
+      expect(result[2].position, 3.0);
+      expect(result[3].position, 4.0);
     });
   });
 }
