@@ -1493,7 +1493,7 @@ class ActorListViewHost extends ActorViewHost {
     }
 
     final item = items.elementAt(index);
-    final itemId = item.value;
+    final itemId = item.refId;
 
     final attrHost = _attrHosts[itemId];
 
@@ -1506,31 +1506,13 @@ class ActorListViewHost extends ActorViewHost {
     return attrHost.valueAttr<T>(attrName);
   }
 
-  T valueAttrByKey<T>(String attrName, String itemKey) {
-    if (itemKey.isEmpty) {
-      throw FluirError('can not get value attribute by empty item key');
-    }
-
-    final index = items.toList().indexWhere(
-      (item) => item.key == itemKey,
-    );
-
-    if (index == -1) {
-      throw FluirError(
-        'list item with key "$itemKey" not found in ${debugId}',
-      );
-    }
-
-    return valueAttr<T>(attrName, index);
-  }
-
   int counterAttr(String attrName, int index) {
     if (index < 0 || index >= items.length) {
       throw FluirError('index $index is out of bounds for ${view.name}');
     }
 
     final item = items.elementAt(index);
-    final itemId = item.value;
+    final itemId = item.refId;
 
     final attrHost = _attrHosts[itemId];
 
@@ -1541,24 +1523,6 @@ class ActorListViewHost extends ActorViewHost {
     }
 
     return attrHost.counterAttr(attrName);
-  }
-
-  int counterAttrByKey(String attrName, String itemKey) {
-    if (itemKey.isEmpty) {
-      throw FluirError('can not get value attribute by empty item key');
-    }
-
-    final index = items.toList().indexWhere(
-      (item) => item.key == itemKey,
-    );
-
-    if (index == -1) {
-      throw FluirError(
-        'list item with key "$itemKey" not found in ${debugId}',
-      );
-    }
-
-    return counterAttr(attrName, index);
   }
 
   ActorQueryHost itemHost(int index) {
