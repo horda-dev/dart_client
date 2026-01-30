@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:async/async.dart';
@@ -392,9 +393,11 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
         'apiKey': _apiKey,
       };
 
-      final idToken = await system.authProvider?.getFirebaseIdToken();
-      if (idToken != null) {
-        headers['firebaseIdToken'] = idToken;
+      final authEvent = await system.authProvider?.getAuthEvent();
+      if (authEvent != null) {
+        final jsonString = jsonEncode(authEvent.toJson());
+        final base64String = base64UrlEncode(utf8.encode(jsonString));
+        headers['authEvent'] = base64String;
       }
 
       // Must check if channel is already assigned exactly before assigning a new channel.

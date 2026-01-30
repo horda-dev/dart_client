@@ -523,22 +523,23 @@ class TestHordaClientSystem extends HordaClientSystem {
   }
 }
 
-/// Provider interface for authentication tokens.
+/// Provider interface for authentication events.
 ///
-/// Implement this interface to provide JWT tokens for authenticated
-/// connections to the Horda backend.
+/// Implement this interface to provide authentication events for authenticated
+/// connections to the Horda backend. The RemoteEvent will be serialized to JSON
+/// and base64 url encoded before transmission.
 ///
 /// Example:
 /// ```dart
 /// class MyAuthProvider implements AuthProvider {
 ///   @override
-///   Future<String?> getFirebaseIdToken() async {
-///     return await getCurrentUserJwtToken();
+///   Future<RemoteEvent?> getAuthEvent() async {
+///     return await JWTAuthRequested(jwt);
 ///   }
 /// }
 /// ```
 abstract class AuthProvider {
-  Future<String?> getFirebaseIdToken();
+  Future<RemoteEvent?> getAuthEvent();
 }
 
 /// Service interface for reporting errors to external tracking systems.
@@ -602,10 +603,26 @@ class DispatchLabels implements MessageLabels {
 
 /// Test implementation of [AuthProvider] for unit testing.
 ///
-/// Returns a static test token, useful for testing scenarios
+/// Returns a static test auth event, useful for testing scenarios
 /// that require authentication without real credentials.
 class TestAuthProvider implements AuthProvider {
-  Future<String?> getFirebaseIdToken() {
-    return Future.value('test-id-token');
+  @override
+  Future<RemoteEvent?> getAuthEvent() async {
+    return TestAuthEvent('test-auth');
+  }
+}
+
+@JsonSerializable()
+class TestAuthEvent extends RemoteEvent {
+  TestAuthEvent(this.credential);
+
+  final String credential;
+
+  factory TestAuthEvent.fromJson(Map<String, dynamic> json) {
+    return _$TestAuthEventFromJson(json);
+  }
+
+  Map<String, dynamic> toJson() {
+    return _$TestAuthEventToJson(this);
   }
 }
