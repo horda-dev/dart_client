@@ -1,3 +1,11 @@
+## 0.30.0
+
+- **BREAKING CHANGE**: Updated authentication to use RemoteEvent instead of a Firebase JWT.
+  - `AuthProvider.getFirebaseIdToken()` renamed to `AuthProvider.getAuthEvent()`
+  - It now returns `Future<RemoteEvent?>` instead of `Future<String?>`
+  - The RemoteEvent is serialized to JSON and base64 url encoded before transmission
+  - To migrate: Implement `getAuthEvent()` instead of `getFirebaseIdToken()`
+
 ## 0.29.0
 
 - **BREAKING CHANGE**: Refactored list item API from key-based to position-based access
