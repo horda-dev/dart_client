@@ -94,12 +94,12 @@ void main() {
       })
       ..list('list1', listAttrs, '100:0:0:0', 'test-page-id', (rb) {
         rb
-          ..item('xid-1', 'actor3', (rb) {
+          ..item(1.0, 'actor3', (rb) {
             rb
               ..val('view5', 'value35', '3500:0:0:0')
               ..val('view6', 'value36', '3610:0:0:0');
           })
-          ..item('xid-2', 'actor4', (rb) {
+          ..item(2.0, 'actor4', (rb) {
             rb
               ..val('view5', 'value45', '4500:0:0:0')
               ..val('view6', 'value46', '4610:0:0:0');
@@ -138,10 +138,10 @@ void main() {
     var list = host.children['list1'] as ActorListViewHost;
     // Check ListItems instead of raw EntityIds
     expect(list.items.length, 2);
-    expect(list.items.elementAt(0).key, 'xid-1');
-    expect(list.items.elementAt(0).value, 'actor3');
-    expect(list.items.elementAt(1).key, 'xid-2');
-    expect(list.items.elementAt(1).value, 'actor4');
+    expect(list.items.elementAt(0).position, 1.0);
+    expect(list.items.elementAt(0).refId, 'actor3');
+    expect(list.items.elementAt(1).position, 2.0);
+    expect(list.items.elementAt(1).refId, 'actor4');
     expect(list.changeId, '100:0:0:0');
     // expect(list.state, ActorQueryState.loaded);
     expect(list.counterAttr('counter-attr', 0), 33);

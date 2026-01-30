@@ -280,15 +280,6 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
     );
   }
 
-  EntityQueryDependencyBuilder<I> listItemQueryByKey<I extends EntityQuery>(
-    ListItemSelector<Q, I> sel,
-    String key,
-  ) {
-    return EntityQueryDependencyBuilder._(
-      _builder.listItemQueryByKey(sel, key, maybe: false),
-    );
-  }
-
   EntityQueryDependencyBuilder<C> ref<C extends EntityQuery>(
     RefSelector<Q, C> sel,
   ) {
@@ -342,7 +333,7 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
     return _builder.maybeRefValAttr<T>(sel, attrName);
   }
 
-  ListItem listItem(ListSelector<Q> sel, int index) {
+  String listItem(ListSelector<Q> sel, int index) {
     return _builder.listItem(sel, index);
   }
 
@@ -354,31 +345,7 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
     return _builder.listItemCounterAttr(sel, attrName, index);
   }
 
-  EntityId listItemValue(ListSelector<Q> sel, String key) {
-    return _builder.listItemValue(sel, key);
-  }
-
-  T listItemValueAttrByKey<T>(
-    ListSelector<Q> sel,
-    String attrName,
-    String itemKey,
-  ) {
-    return _builder.listItemValAttrByKey<T>(sel, attrName, itemKey);
-  }
-
-  int listItemCounterAttrByKey(
-    ListSelector<Q> sel,
-    String attrName,
-    String itemKey,
-  ) {
-    return _builder.listItemCounterAttrByKey(sel, attrName, itemKey);
-  }
-
-  bool listContainsKey(ListSelector<Q> sel, String key) {
-    return _builder.listContainsKey(sel, key);
-  }
-
-  List<ListItem> listItems(ListSelector<Q> sel) {
+  List<String> listItems(ListSelector<Q> sel) {
     return _builder.listItems(sel);
   }
 
@@ -540,16 +507,6 @@ class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
     );
   }
 
-  MaybeEntityQueryDependencyBuilder<I>
-  listItemQueryByKey<I extends EntityQuery>(
-    ListItemSelector<Q, I> sel,
-    String key,
-  ) {
-    return MaybeEntityQueryDependencyBuilder._(
-      _builder.listItemQueryByKey(sel, key, maybe: true),
-    );
-  }
-
   MaybeEntityQueryDependencyBuilder<C> ref<C extends EntityQuery>(
     RefSelector<Q, C> sel,
   ) {
@@ -578,7 +535,7 @@ class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
     throw _builder.maybeRefValAttr(sel, attrName);
   }
 
-  ListItem? listItem(ListSelector<Q> sel, int index) {
+  String? listItem(ListSelector<Q> sel, int index) {
     return _builder.listItem(sel, index);
   }
 
@@ -640,41 +597,7 @@ class _Builder<Q extends EntityQuery> {
     }
 
     var listItem = list.items.elementAt(index);
-    var itemId = listItem.value;
-    newPath = newPath.append(ActorQueryPath.root(itemId));
-
-    return _Builder.child(
-      queryType,
-      newPath,
-      list.itemHost(index),
-      element,
-      context,
-      depend: depend,
-      maybe: maybe,
-    );
-  }
-
-  _Builder<I> listItemQueryByKey<I extends EntityQuery>(
-    ListItemSelector<Q, I> sel,
-    String key, {
-    required bool maybe,
-  }) {
-    var view = sel(host.query as Q);
-    var newPath = path.append(ActorQueryPath.root(view.name));
-
-    var list = host.children[view.name] as ActorListViewHost;
-
-    // Find the index by key
-    final index = list.items.toList().indexWhere((item) => item.key == key);
-
-    if (index == -1) {
-      throw FluirError(
-        'list item with key "$key" not found in ${list.debugId}',
-      );
-    }
-
-    var listItem = list.items.elementAt(index);
-    var itemId = listItem.value;
+    var itemId = listItem.refId;
     newPath = newPath.append(ActorQueryPath.root(itemId));
 
     return _Builder.child(
@@ -860,7 +783,7 @@ class _Builder<Q extends EntityQuery> {
     return child.refId;
   }
 
-  ListItem listItem(ListSelector<Q> sel, int index) {
+  String listItem(ListSelector<Q> sel, int index) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -889,10 +812,10 @@ class _Builder<Q extends EntityQuery> {
       throw FluirError('index $index is out of bounds for ${child.debugId}');
     }
 
-    return child.items.elementAt(index);
+    return child.items.elementAt(index).refId;
   }
 
-  EntityId listItemValue(ListSelector<Q> sel, String key) {
+  List<String> listItems(ListSelector<Q> sel) {
     var view = sel(host.query as Q);
     var newPath = path.append(ActorQueryPath.root(view.name));
 
@@ -914,65 +837,7 @@ class _Builder<Q extends EntityQuery> {
       );
     }
 
-    // Find item by key
-    final item = child.items.firstWhere(
-      (item) => item.key == key,
-      orElse: () => throw FluirError(
-        'list item with key "$key" not found in ${child.debugId}',
-      ),
-    );
-
-    return item.value;
-  }
-
-  bool listContainsKey(ListSelector<Q> sel, String key) {
-    var view = sel(host.query as Q);
-    var newPath = path.append(ActorQueryPath.root(view.name));
-
-    if (depend) {
-      element.depend(queryType, newPath, context);
-    }
-
-    var child = host.children[view.name];
-
-    if (child == null) {
-      throw FluirError(
-        'list view host for ${view.name} not found in ${host.debugId}',
-      );
-    }
-
-    if (child is! ActorListViewHost) {
-      throw FluirError(
-        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
-      );
-    }
-
-    return child.items.any((item) => item.key == key);
-  }
-
-  List<ListItem> listItems(ListSelector<Q> sel) {
-    var view = sel(host.query as Q);
-    var newPath = path.append(ActorQueryPath.root(view.name));
-
-    if (depend) {
-      element.depend(queryType, newPath, context);
-    }
-
-    var child = host.children[view.name];
-
-    if (child == null) {
-      throw FluirError(
-        'list view host for ${view.name} not found in ${host.debugId}',
-      );
-    }
-
-    if (child is! ActorListViewHost) {
-      throw FluirError(
-        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
-      );
-    }
-
-    return List.unmodifiable(child.items);
+    return List.unmodifiable(child.items.map((i) => i.refId));
   }
 
   int? listLength(ListSelector<Q> sel) {
@@ -1083,35 +948,6 @@ class _Builder<Q extends EntityQuery> {
     return child.valueAttr<T>(attrName, index);
   }
 
-  T listItemValAttrByKey<T>(
-    ListSelector<Q> sel,
-    String attrName,
-    String itemKey,
-  ) {
-    final view = sel(host.query as Q);
-    final newPath = path.append(ActorQueryPath.root(view.name));
-
-    if (depend) {
-      element.depend(queryType, newPath, context);
-    }
-
-    final child = host.children[view.name];
-
-    if (child == null) {
-      throw FluirError(
-        'list view host for ${view.name} not found in ${host.debugId}',
-      );
-    }
-
-    if (child is! ActorListViewHost) {
-      throw FluirError(
-        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
-      );
-    }
-
-    return child.valueAttrByKey<T>(attrName, itemKey);
-  }
-
   int listItemCounterAttr(ListSelector<Q> sel, String attrName, int index) {
     final view = sel(host.query as Q);
     final newPath = path.append(ActorQueryPath.root(view.name));
@@ -1135,35 +971,6 @@ class _Builder<Q extends EntityQuery> {
     }
 
     return child.counterAttr(attrName, index);
-  }
-
-  int listItemCounterAttrByKey(
-    ListSelector<Q> sel,
-    String attrName,
-    String itemKey,
-  ) {
-    final view = sel(host.query as Q);
-    final newPath = path.append(ActorQueryPath.root(view.name));
-
-    if (depend) {
-      element.depend(queryType, newPath, context);
-    }
-
-    final child = host.children[view.name];
-
-    if (child == null) {
-      throw FluirError(
-        'list view host for ${view.name} not found in ${host.debugId}',
-      );
-    }
-
-    if (child is! ActorListViewHost) {
-      throw FluirError(
-        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
-      );
-    }
-
-    return child.counterAttrByKey(attrName, itemKey);
   }
 
   void addChangeHandler<C extends Change>(

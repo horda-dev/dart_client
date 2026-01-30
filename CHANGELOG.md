@@ -1,3 +1,15 @@
+## 0.29.0
+
+- **BREAKING CHANGE**: Refactored list item API from key-based to position-based access
+  - `listItem()` now returns `String` (refId) instead of `ListItem` object
+  - `listItems()` now returns `List<String>` (refIds) instead of `List<ListItem>`
+  - Removed `listItemQueryByKey()` method - use index-based `listItemQuery()` instead
+  - Removed `listItemValue()` method - use `listItem()` instead (returns refId directly)
+  - Removed `listItemValueAttrByKey()` method
+  - Removed `listItemCounterAttrByKey()` method
+  - Removed `listContainsKey()` method
+- **FEAT**: update horda_core to 0.21.0
+
 ## 0.28.2
 
 - **FIX**: Temporary fix for infinite loading of concurrent intersecting queries.
