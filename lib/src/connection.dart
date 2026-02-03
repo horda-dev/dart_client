@@ -6,11 +6,14 @@ import 'dart:math';
 import 'package:async/async.dart';
 import 'package:flutter/foundation.dart';
 import 'package:horda_core/horda_core.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'system.dart';
+
+part 'connection.g.dart';
 
 /// Represents the current state of the WebSocket connection to the Horda backend.
 ///
@@ -395,8 +398,13 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
       final authEvent = await system.authProvider?.getAuthEvent();
       if (authEvent != null) {
-        final jsonString = jsonEncode(authEvent.toJson());
-        final base64String = base64UrlEncode(utf8.encode(jsonString));
+        final jsonString = jsonEncode(
+          AuthenticationEvent(authEvent),
+        );
+        // Dart's base64UrlEncode includes padding characters, so remove it manually.
+        final base64String = base64UrlEncode(
+          utf8.encode(jsonString),
+        ).replaceAll('=', '');
         headers['authEvent'] = base64String;
       }
 
@@ -600,4 +608,18 @@ class ChannelOverwriteException extends ConnectionException {
 class ChannelDisposedWhileWaitingException extends ConnectionException {
   ChannelDisposedWhileWaitingException()
     : super('web socket channel was disposed while waiting for it to open');
+}
+
+@JsonSerializable(createFactory: false)
+class AuthenticationEvent {
+  AuthenticationEvent(RemoteEvent event)
+    : eventType = event.runtimeType.toString(),
+      payload = event;
+
+  final String eventType;
+  final RemoteEvent payload;
+
+  Map<String, dynamic> toJson() {
+    return _$AuthenticationEventToJson(this);
+  }
 }
