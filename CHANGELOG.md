@@ -1,3 +1,7 @@
+## 0.30.1
+
+- **FIX**: Fix queries not re-running when a quick reconnection occurs.
+
 ## 0.30.0
 
 - **BREAKING CHANGE**: Updated authentication to use RemoteEvent instead of a Firebase JWT.
