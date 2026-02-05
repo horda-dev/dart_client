@@ -1987,10 +1987,20 @@ class FluirSystemProviderElement
     }
   }
 
-  void _reconnectionVisitor(Element element) {
+  void _reconnectionVisitor(Element element) async {
     if (element is ActorQueryProviderElement) {
       element.host.unsubscribe();
       element.host.detach();
+
+      // Make all top level queries await for the end of frame.
+      //
+      // This ensures that child queries lower in the tree will
+      // get disposed due to top level query changing it's state
+      // to loading and displaying a loading spinner.
+      //
+      // Without it, a quick reconnection does not result in a full query re-run.
+      await WidgetsBinding.instance.endOfFrame;
+
       element.host.run(element.actorId);
       return;
     }
