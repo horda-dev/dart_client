@@ -1,3 +1,7 @@
+## 0.30.2
+
+- **FIX**: Keep `EntityListView` item removal state consistent during async unsubscribe to prevent `no item host found ...` errors when reading list item queries.
+
 ## 0.30.1
 
 - **FIX**: Fix queries not re-running when a quick reconnection occurs.
