@@ -1,6 +1,6 @@
 ## 0.30.2
 
-- **FIX**: Keep `EntityListView` item removal state consistent during async unsubscribe to prevent `no item host found ...` errors when reading list item queries.
+- **FIX**: Remove `EntityListView` refIds and childHosts together, before any async gaps, to prevent `no item host found ...` errors during item removal projection.
 
 ## 0.30.1
 
