@@ -1,3 +1,7 @@
+## 0.30.2
+
+- **FIX**: Remove `EntityListView` refIds and childHosts together, before any async gaps, to prevent `no item host found ...` errors during item removal projection.
+
 ## 0.30.1
 
 - **FIX**: Fix queries not re-running when a quick reconnection occurs.

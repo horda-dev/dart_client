@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:horda_client/horda_client.dart';
 import 'package:horda_client/src/query.dart';
@@ -33,6 +35,34 @@ class TestListItemQuery extends EntityQuery {
   }
 }
 
+class TestSubscribedListItemQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestListItem';
+
+  final value = EntityValueView<String>('itemValue', subscribe: true);
+
+  @override
+  void initViews(EntityQueryGroup views) {
+    views.add(value);
+  }
+}
+
+class TestQueryWithSubscribedListItemQuery extends EntityQuery {
+  @override
+  String get entityName => 'TestEntity';
+
+  final list = EntityListView(
+    'testList',
+    query: TestSubscribedListItemQuery(),
+    attrs: ['attr1'],
+  );
+
+  @override
+  void initViews(EntityQueryGroup views) {
+    views.add(list);
+  }
+}
+
 // Query with subscribed list view for testing subscriptions
 class TestQueryWithSubscribedList extends EntityQuery {
   @override
@@ -47,6 +77,38 @@ class TestQueryWithSubscribedList extends EntityQuery {
   @override
   void initViews(EntityQueryGroup views) {
     views.add(list);
+  }
+}
+
+class BlockingUnsubscribeConnection extends MockConnection {
+  final unsubscribeStarted = Completer<void>();
+  final _unblockUnsubscribe = Completer<void>();
+  bool _shouldBlockNextRegularUnsubscribe = false;
+
+  void blockNextRegularUnsubscribe() {
+    _shouldBlockNextRegularUnsubscribe = true;
+  }
+
+  void allowUnsubscribe() {
+    if (!_unblockUnsubscribe.isCompleted) {
+      _unblockUnsubscribe.complete();
+    }
+  }
+
+  @override
+  Future<void> unsubscribeViews(Iterable<ActorViewSub> subs) async {
+    await super.unsubscribeViews(subs);
+
+    final hasRegularViewSub = subs.any((s) => s.entityName.isNotEmpty);
+    if (!_shouldBlockNextRegularUnsubscribe || !hasRegularViewSub) {
+      return;
+    }
+
+    _shouldBlockNextRegularUnsubscribe = false;
+    if (!unsubscribeStarted.isCompleted) {
+      unsubscribeStarted.complete();
+    }
+    await _unblockUnsubscribe.future;
   }
 }
 
@@ -311,6 +373,59 @@ void main() {
       expect(result[0].position, 1.0);
       expect(result[1].position, 3.0);
     });
+
+    test(
+      'should not expose removed item in list while item unsubscribe is in flight',
+      () async {
+        final blockingConn = BlockingUnsubscribeConnection();
+        final blockingSystem = TestHordaClientSystem.withConnection(
+          conn: blockingConn,
+        );
+
+        final query = TestQueryWithSubscribedListItemQuery();
+        final host = query.rootHost('Test', blockingSystem);
+
+        final result = QueryResultBuilder()
+          ..list('testList', {}, '1:0:0:0', 'test-page-id', (rb) {
+            rb.item(1.0, 'item-value-1', (itemBuilder) {
+              itemBuilder.val('itemValue', 'value-1', '1:0:0:0');
+            });
+          });
+
+        host.attach('actor-1', result.build());
+        blockingSystem.finalizeQuerySubscriptions(
+          host.query.queryBuilder().build(),
+          host.subscriptions(),
+        );
+
+        final hostList = host.children['testList'] as ActorListViewHost;
+        expect(
+          hostList.items.map((item) => item.refId).toList(),
+          equals(['item-value-1']),
+        );
+
+        blockingConn.blockNextRegularUnsubscribe();
+        final removeFuture = hostList.project(
+          'actor-1',
+          'testList',
+          ListPageItemRemoved(pageId: hostList.pageId, pos: 1.0),
+          hostList.value as List<ListItem>,
+        );
+
+        await blockingConn.unsubscribeStarted.future;
+
+        expect(
+          hostList.items.map((item) => item.refId).toList(),
+          isEmpty,
+          reason:
+              'list should not expose an item after its host was removed during async unsubscribe',
+        );
+
+        blockingConn.allowUnsubscribe();
+        final projected = await removeFuture;
+        expect(projected, isEmpty);
+      },
+    );
 
     test('should include pageId in subscriptions()', () {
       // Create a new query with subscribe flag set

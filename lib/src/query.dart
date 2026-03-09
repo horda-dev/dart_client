@@ -1726,14 +1726,17 @@ class ActorListViewHost extends ActorViewHost {
         return _children.containsKey(itemId) && _attrHosts.containsKey(itemId);
       }());
 
+      // Keep list value and host maps consistent before any async gap.
+      // If we await unsubscribe first, widgets can still read the removed item
+      // from list value and fail to resolve its host via itemHost().
+      previousValue.removeWhere((item) => item.position == change.pos);
+
       final attrHost = _attrHosts.remove(itemId);
       attrHost!.stop();
       final host = _children.remove(itemId);
       await host!.unsubscribe();
       host.stop();
 
-      // Remove the ListItem by its position
-      previousValue.removeWhere((item) => item.position == change.pos);
       return previousValue;
     }
 
