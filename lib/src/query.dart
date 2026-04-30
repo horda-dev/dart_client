@@ -565,6 +565,11 @@ class ActorQueryHost {
   ///
   /// Ref: [FluirSystemProviderElement._reconnectionVisitor]
   Future<void> run(EntityId actorId) async {
+    if (_isStopped) {
+      logger.info('$actorId: skipping run on stopped host');
+      return;
+    }
+
     final qdef = query.queryBuilder().build();
 
     logger.fine('$actorId: running query...');
@@ -2003,6 +2008,12 @@ class FluirSystemProviderElement
       //
       // Without it, a quick reconnection does not result in a full query re-run.
       await WidgetsBinding.instance.endOfFrame;
+
+      if (!element.mounted) {
+        // The query provider may get unmounted on the next frame.
+        // We must not re-run queries of unmounted query providers.
+        return;
+      }
 
       element.host.run(element.actorId);
       return;
