@@ -1,3 +1,8 @@
+## 0.30.3
+
+- **FIX**: Fix queries stuck in `created` state after reconnection.
+- **FIX**: Fix query synchronizer always cleaning up a query completer instead of only on error.
+
 ## 0.30.2
 
 - **FIX**: Remove `EntityListView` refIds and childHosts together, before any async gaps, to prevent `no item host found ...` errors during item removal projection.
