@@ -1983,42 +1983,67 @@ class FluirSystemProviderElement
 
   final Connection conn;
 
+  int _reconnectCount = 0;
+
   @override
   void unmount() {
     conn.removeListener(_onReconnect);
     super.unmount();
   }
 
-  void _onReconnect() {
-    if (conn.value is ConnectionStateReconnected) {
-      visitChildElements(_reconnectionVisitor);
+  void _onReconnect() async {
+    if (conn.value is! ConnectionStateReconnected) {
+      return;
     }
-  }
 
-  void _reconnectionVisitor(Element element) async {
-    if (element is ActorQueryProviderElement) {
+    final reconnectInstance = ++_reconnectCount;
+
+    final providers = <ActorQueryProviderElement>[];
+    _collectQueryProviders(this, providers);
+
+    for (final element in providers) {
       element.host.unsubscribe();
       element.host.detach();
+    }
 
-      // Make all top level queries await for the end of frame.
-      //
-      // This ensures that child queries lower in the tree will
-      // get disposed due to top level query changing it's state
-      // to loading and displaying a loading spinner.
-      //
-      // Without it, a quick reconnection does not result in a full query re-run.
-      await WidgetsBinding.instance.endOfFrame;
+    // Wait for the end of frame.
+    //
+    // This ensures that queries which are replaced with some loading UI get disposed properly
+    // due to parent query changing it's state and no longer being 'loaded'.
+    //
+    // This lets us avoid rerunning queries which would be unmounted right away, which could potentially cause issues.
+    await WidgetsBinding.instance.endOfFrame;
 
+    // Avoid an edge case where client reconnect again while we were waiting for the end of frame.
+    if (_reconnectCount != reconnectInstance) {
+      return;
+    }
+
+    for (final element in providers) {
       if (!element.mounted) {
-        // The query provider may get unmounted on the next frame.
         // We must not re-run queries of unmounted query providers.
-        return;
+        // This will cause issues with query state and client-side view sub counting.
+        // E.g.: query can get stuck in 'created' state.
+        continue;
       }
 
       element.host.run(element.actorId);
+    }
+  }
+
+  /// Recursive visitor which collects all [ActorQueryProviderElement]s in the tree.
+  void _collectQueryProviders(
+    Element element,
+    List<ActorQueryProviderElement> result,
+  ) {
+    if (element is ActorQueryProviderElement) {
+      result.add(element);
       return;
     }
-    element.visitChildElements(_reconnectionVisitor);
+
+    element.visitChildElements(
+      (child) => _collectQueryProviders(child, result),
+    );
   }
 }
 
