@@ -240,11 +240,12 @@ class HordaClientSystem {
       return result;
     } catch (e) {
       logger.severe('query and subscribe error $e');
-      rethrow;
-    } finally {
+
       // Note: completer is completed in finalizeQuerySubscriptions()
       // We only clean up here if the query failed before finalization
       _querySynchronizer.cleanupQuery(def, completer);
+
+      rethrow;
     }
   }
 
