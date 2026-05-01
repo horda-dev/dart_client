@@ -588,6 +588,8 @@ class ActorQueryHost {
       logger.finer('$actorId: got query result: ${result.toJson()}');
 
       if (_isStopped) {
+        // TODO: This early return may cause some issues. Pay attention to this spot if there
+        //  are any problems with queries/subscriptions. Unmount can stop a query host while the query is in-flight.
         logger.info('$actorId: run stopped');
         return;
       }
