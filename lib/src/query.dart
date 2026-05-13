@@ -1759,6 +1759,9 @@ class ActorListViewHost extends ActorViewHost {
       }
       _attrHosts.clear();
 
+      // Collect subs and stop child hosts without unsubcribing.
+      // This way we will send a single unsubscribe request for
+      // all child hosts, instead of one request per child host.
       final subs = <ActorViewSub>[];
       for (final host in _children.values) {
         subs.addAll(host.subscriptions());
