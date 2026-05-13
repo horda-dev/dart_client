@@ -587,13 +587,6 @@ class ActorQueryHost {
 
       logger.finer('$actorId: got query result: ${result.toJson()}');
 
-      if (_isStopped) {
-        // TODO: This early return may cause some issues. Pay attention to this spot if there
-        //  are any problems with queries/subscriptions. Unmount can stop a query host while the query is in-flight.
-        logger.info('$actorId: run stopped');
-        return;
-      }
-
       // Attach first to set up change stream listeners
       attach(actorId, result);
 
@@ -696,9 +689,19 @@ class ActorQueryHost {
     actorId = null;
   }
 
-  void stop() {
+  /// [stop] is the end of the host's lifecycle, the host should no longer be used after [stop] was called.
+  ///
+  /// [unsubscribe] - whether unsubscribe should be called while stopping.
+  ///
+  /// [ActorListViewHost]s prefer batching child host unsubscribes into one request,
+  /// to avoid flooding with unsubscribe requests for each child host on [ListPageCleared].
+  Future<void> stop({bool unsubscribe = true}) async {
     logger.fine('$actorId: stopping...');
     _isStopped = true;
+
+    if (unsubscribe) {
+      await this.unsubscribe();
+    }
 
     var oldActorId = actorId;
 
@@ -1741,8 +1744,7 @@ class ActorListViewHost extends ActorViewHost {
       final attrHost = _attrHosts.remove(itemId);
       attrHost!.stop();
       final host = _children.remove(itemId);
-      await host!.unsubscribe();
-      host.stop();
+      await host!.stop();
 
       return previousValue;
     }
@@ -1760,14 +1762,14 @@ class ActorListViewHost extends ActorViewHost {
       final subs = <ActorViewSub>[];
       for (final host in _children.values) {
         subs.addAll(host.subscriptions());
-        host.stop();
+        host.stop(unsubscribe: false);
       }
 
       logger.fine('unsubscribing on ListViewCleared...');
 
       // Build QueryDef for the nested query used by list items
       final nestedQuery = view.query.queryBuilder().build();
-      system.unsubscribeViews(nestedQuery, subs);
+      await system.unsubscribeViews(nestedQuery, subs);
 
       logger.info('unsubscribed on ListViewCleared');
 
@@ -2181,7 +2183,6 @@ class ActorQueryProviderElement
   void unmount() {
     logger.fine('$actorId: provider unmounting...');
 
-    host.unsubscribe();
     host.stop();
     _unmounted = true;
 
