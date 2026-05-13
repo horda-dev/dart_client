@@ -1,3 +1,7 @@
+## 0.30.4
+
+- **FIX**: Fix queries stuck in `created` due to rapid mount/unmount of the query provider element.
+
 ## 0.30.3
 
 - **FIX**: Fix queries stuck in `created` state after reconnection.
