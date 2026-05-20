@@ -1,3 +1,6 @@
+## 0.31.0
+
+- **FEAT**: Expand `ErrorTrackingService` interface, improve error handling and reporting.
 ## 0.30.4
 
 - **FIX**: Fix queries stuck in `created` due to rapid mount/unmount of the query provider element.
