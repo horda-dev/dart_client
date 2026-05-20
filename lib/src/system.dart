@@ -111,14 +111,14 @@ class HordaClientSystem {
     required RemoteCommand cmd,
   }) {
     logger.fine('sending remote command $cmd to $id...');
-    analyticsService?.reportMessage(
-      cmd,
-      SendCallLabels(
-        senderId: _senderId,
-        entityId: id,
-        entityName: name,
-      ),
+
+    final sendCallLabels = SendCallLabels(
+      senderId: _senderId,
+      entityId: id,
+      entityName: name,
     );
+    analyticsService?.reportMessage(cmd, sendCallLabels);
+    errorTrackingService?.reportMessage(cmd, sendCallLabels);
 
     try {
       conn.sendEntity(name, id, cmd);
@@ -137,14 +137,14 @@ class HordaClientSystem {
     required FromJsonFun<E> fac,
   }) async {
     logger.fine('calling remote command $cmd to $id...');
-    analyticsService?.reportMessage(
-      cmd,
-      SendCallLabels(
-        senderId: _senderId,
-        entityId: id,
-        entityName: name,
-      ),
+
+    final callLabels = SendCallLabels(
+      senderId: _senderId,
+      entityId: id,
+      entityName: name,
     );
+    analyticsService?.reportMessage(cmd, callLabels);
+    errorTrackingService?.reportMessage(cmd, callLabels);
 
     final res = await conn.callEntity(
       name,
@@ -163,7 +163,10 @@ class HordaClientSystem {
   /// after the event is handled by [Flow].
   Future<ProcessResult> runProcess(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
-    analyticsService?.reportMessage(event, DispatchLabels(senderId: _senderId));
+
+    final dispatchLabels = DispatchLabels(senderId: _senderId);
+    analyticsService?.reportMessage(event, dispatchLabels);
+    errorTrackingService?.reportMessage(event, dispatchLabels);
 
     final res = await conn.runProcess(event, const Duration(seconds: 10));
 
@@ -549,6 +552,12 @@ abstract class AuthProvider {
 /// like Crashlytics, Sentry, or Bugsnag.
 abstract class ErrorTrackingService {
   void reportError(Object e, [StackTrace? stack]);
+
+  void reportConnectionState(HordaConnectionState state);
+
+  void reportMessage(Message msg, [MessageLabels? labels]);
+
+  void reportConnectionClosure(int? closeCode, String? closeReason);
 }
 
 /// Service interface for reporting analytics events.
