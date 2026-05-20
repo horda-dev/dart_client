@@ -109,7 +109,7 @@ class HordaClientSystem {
     required String name,
     required EntityId id,
     required RemoteCommand cmd,
-  }) {
+  }) async {
     logger.fine('sending remote command $cmd to $id...');
 
     final sendCallLabels = SendCallLabels(
@@ -121,9 +121,10 @@ class HordaClientSystem {
     errorTrackingService?.reportMessage(cmd, sendCallLabels);
 
     try {
-      conn.sendEntity(name, id, cmd);
-    } catch (e) {
-      logger.severe('send remote $cmd to $id failed with $e');
+      await conn.sendEntity(name, id, cmd);
+    } catch (e, stack) {
+      logger.severe('send remote $cmd to $id failed with $e', e, stack);
+      errorTrackingService?.reportError(e, stack);
       return;
     }
 
@@ -285,8 +286,9 @@ class HordaClientSystem {
       await conn.subscribeViews(readyToSub);
 
       logger.info('subscribed to ${readyToSub.length} views');
-    } catch (e) {
-      logger.severe('subscribe views error $e');
+    } catch (e, stack) {
+      logger.severe('subscribe views error $e', e, stack);
+      errorTrackingService?.reportError(e, stack);
 
       logger.warning('Decrementing host count due to unsub error...');
       _decViewSubCount(subs);
@@ -313,8 +315,9 @@ class HordaClientSystem {
       await conn.unsubscribeViews(readyToUnsub);
 
       logger.info('unsubscribed from ${readyToUnsub.length} views');
-    } catch (e) {
-      logger.severe('unsubscribe views error $e');
+    } catch (e, stack) {
+      logger.severe('unsubscribe views error $e', e, stack);
+      errorTrackingService?.reportError(e, stack);
 
       logger.warning('Re-incrementing host count due to unsub error...');
       _incViewSubCount(subs);

@@ -70,8 +70,11 @@ class HordaEntity {
         await _handlers[next.runtimeType](next, context);
 
         context.logger.info('loop handled $next');
-      } catch (e) {
-        context.logger.severe('loop handled $next with error: $e');
+      } catch (e, stack) {
+        context.logger.severe('loop handled $next with error: $e', e, stack);
+        // Surface the caught handler error as an async error, so consumer app can report it if necessary.
+        // This also matches the error propagation of HordaProcess handler and does not break the do/while loop.
+        Future.error(e, stack);
       }
     } while (_inbox.isNotEmpty);
     _idle = true;
