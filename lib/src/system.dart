@@ -109,21 +109,22 @@ class HordaClientSystem {
     required String name,
     required EntityId id,
     required RemoteCommand cmd,
-  }) {
+  }) async {
     logger.fine('sending remote command $cmd to $id...');
-    analyticsService?.reportMessage(
-      cmd,
-      SendCallLabels(
-        senderId: _senderId,
-        entityId: id,
-        entityName: name,
-      ),
+
+    final sendCallLabels = SendCallLabels(
+      senderId: _senderId,
+      entityId: id,
+      entityName: name,
     );
+    analyticsService?.reportMessage(cmd, sendCallLabels);
+    errorTrackingService?.reportMessage(cmd, sendCallLabels);
 
     try {
-      conn.sendEntity(name, id, cmd);
-    } catch (e) {
-      logger.severe('send remote $cmd to $id failed with $e');
+      await conn.sendEntity(name, id, cmd);
+    } catch (e, stack) {
+      logger.severe('send remote $cmd to $id failed with $e', e, stack);
+      errorTrackingService?.reportError(e, stack);
       return;
     }
 
@@ -137,14 +138,14 @@ class HordaClientSystem {
     required FromJsonFun<E> fac,
   }) async {
     logger.fine('calling remote command $cmd to $id...');
-    analyticsService?.reportMessage(
-      cmd,
-      SendCallLabels(
-        senderId: _senderId,
-        entityId: id,
-        entityName: name,
-      ),
+
+    final callLabels = SendCallLabels(
+      senderId: _senderId,
+      entityId: id,
+      entityName: name,
     );
+    analyticsService?.reportMessage(cmd, callLabels);
+    errorTrackingService?.reportMessage(cmd, callLabels);
 
     final res = await conn.callEntity(
       name,
@@ -163,7 +164,10 @@ class HordaClientSystem {
   /// after the event is handled by [Flow].
   Future<ProcessResult> runProcess(RemoteEvent event) async {
     logger.fine('dispatching event $event to...');
-    analyticsService?.reportMessage(event, DispatchLabels(senderId: _senderId));
+
+    final dispatchLabels = DispatchLabels(senderId: _senderId);
+    analyticsService?.reportMessage(event, dispatchLabels);
+    errorTrackingService?.reportMessage(event, dispatchLabels);
 
     final res = await conn.runProcess(event, const Duration(seconds: 10));
 
@@ -282,8 +286,9 @@ class HordaClientSystem {
       await conn.subscribeViews(readyToSub);
 
       logger.info('subscribed to ${readyToSub.length} views');
-    } catch (e) {
-      logger.severe('subscribe views error $e');
+    } catch (e, stack) {
+      logger.severe('subscribe views error $e', e, stack);
+      errorTrackingService?.reportError(e, stack);
 
       logger.warning('Decrementing host count due to unsub error...');
       _decViewSubCount(subs);
@@ -310,8 +315,9 @@ class HordaClientSystem {
       await conn.unsubscribeViews(readyToUnsub);
 
       logger.info('unsubscribed from ${readyToUnsub.length} views');
-    } catch (e) {
-      logger.severe('unsubscribe views error $e');
+    } catch (e, stack) {
+      logger.severe('unsubscribe views error $e', e, stack);
+      errorTrackingService?.reportError(e, stack);
 
       logger.warning('Re-incrementing host count due to unsub error...');
       _incViewSubCount(subs);
@@ -549,6 +555,12 @@ abstract class AuthProvider {
 /// like Crashlytics, Sentry, or Bugsnag.
 abstract class ErrorTrackingService {
   void reportError(Object e, [StackTrace? stack]);
+
+  void reportConnectionState(HordaConnectionState state);
+
+  void reportMessage(Message msg, [MessageLabels? labels]);
+
+  void reportConnectionClosure(int? closeCode, String? closeReason);
 }
 
 /// Service interface for reporting analytics events.

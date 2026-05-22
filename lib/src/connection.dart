@@ -141,7 +141,11 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     implements Connection {
   WebSocketConnection(this.system, this._url, this._apiKey)
     : logger = Logger('Fluir.Connection'),
-      super(ConnectionStateDisconnected());
+      super(ConnectionStateDisconnected()) {
+    addListener(
+      () => system.errorTrackingService?.reportConnectionState(value),
+    );
+  }
 
   @override
   String get url => _url;
@@ -560,6 +564,11 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   void _onStreamDone() {
     logger.warning(
       'closed with code: ${_channel?.closeCode} reason ${_channel?.closeReason}',
+    );
+
+    system.errorTrackingService?.reportConnectionClosure(
+      _channel?.closeCode,
+      _channel?.closeReason,
     );
 
     if (value is ConnectionStateDisconnected) {

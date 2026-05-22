@@ -596,10 +596,12 @@ class ActorQueryHost {
       system.finalizeQuerySubscriptions(qdef, subscriptions());
 
       logger.info('$actorId: ran');
-    } catch (e) {
+    } catch (e, stack) {
       _changeState(EntityQueryState.error);
 
-      logger.severe('$actorId: query ran with error: $e');
+      logger.severe('$actorId: query ran with error: $e', e, stack);
+      // TODO: query error reporting will be expanded in https://github.com/horda-dev/dart_client/issues/51
+      system.errorTrackingService?.reportError(e, stack);
     }
   }
 
@@ -1004,9 +1006,12 @@ abstract class ActorViewHost {
 
       // Host must listen to only those changes which are addressed to his actor
       if (env.key != actorId) {
-        logger.severe(
-          '$actorId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}',
-        );
+        final msg =
+            '$actorId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}';
+        final error = StateError(msg);
+
+        logger.severe(msg, error);
+        system.errorTrackingService?.reportError(error);
         continue;
       }
 
@@ -2550,9 +2555,12 @@ class AttributesHost {
 
     // Host must listen to only those changes which are addressed to his actor
     if (env.key != id || env.name != name) {
-      logger.severe(
-        '$debugId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}',
-      );
+      final msg =
+          '$debugId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}';
+      final error = StateError(msg);
+
+      logger.severe(msg, error);
+      system.errorTrackingService?.reportError(error);
       return;
     }
 

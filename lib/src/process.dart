@@ -75,9 +75,14 @@ abstract class HordaProcess extends ProxyWidget
 
   // event is either Notification or Event subclass
   void _handle(Object event, HordaProcessContext context) async {
-    context.logger.fine('handling $event...');
-    await _handlers[event.runtimeType](event, context);
-    context.logger.info('handled $event');
+    try {
+      context.logger.fine('handling $event...');
+      await _handlers[event.runtimeType](event, context);
+      context.logger.info('handled $event');
+    } catch (e, stack) {
+      context.logger.severe('handled $event with error: $e', e, stack);
+      rethrow;
+    }
   }
 
   final _handlers = <Type, dynamic>{};
@@ -200,10 +205,11 @@ class HordaProcessElement extends ProxyElement
       logger.info('received $result from dispatching $event');
 
       return result;
-    } on Exception catch (e) {
+    } on Exception catch (e, stack) {
       final msg = 'received $e from dispatching $event';
 
-      logger.warning(msg);
+      logger.warning(msg, e, stack);
+      system.errorTrackingService?.reportError(e, stack);
 
       return ProcessResult.error(msg);
     }
