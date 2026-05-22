@@ -815,6 +815,7 @@ class ActorQueryHost {
   }
 
   var _state = EntityQueryState.created;
+  // maps view name to view host
   final _children = <String, ActorViewHost>{};
   final _notLoadedChildren = <String>{};
   ActorQueryPathFunc? _watcher;
