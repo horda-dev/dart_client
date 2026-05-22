@@ -881,6 +881,42 @@ final class HordaQueryResultMismatch extends HordaQueryException {
       'HordaQueryResultMismatch: $debugId missing views: $missingViews, extra views: $extraViews';
 }
 
+/// The list query result contained a different number of list values and item query results.
+final class HordaListQueryResultMismatch extends HordaQueryException {
+  HordaListQueryResultMismatch(
+    this.debugId,
+    this.valueLength,
+    this.itemsLength,
+  );
+
+  final String debugId;
+  final int valueLength;
+  final int itemsLength;
+
+  @override
+  String toString() =>
+      'HordaListQueryResultMismatch: $debugId value length: $valueLength, item query length: $itemsLength';
+}
+
+/// A view host received a change envelope for a different actor.
+final class HordaChangeMisdirection extends HordaQueryException {
+  HordaChangeMisdirection(
+    this.debugId,
+    this.expectedEntityId,
+    this.receivedEntityId,
+    this.sourceId,
+  );
+
+  final String debugId;
+  final String expectedEntityId;
+  final String receivedEntityId;
+  final String sourceId;
+
+  @override
+  String toString() =>
+      'HordaChangeMisdirection: $debugId expected entity: $expectedEntityId, received entity: $receivedEntityId, source: $sourceId';
+}
+
 /// Interface for collecting entity views in a query.
 ///
 /// Used by [EntityQuery.initViews] to register the views that
@@ -1117,12 +1153,15 @@ abstract class ActorViewHost {
 
       // Host must listen to only those changes which are addressed to his actor
       if (env.key != actorId) {
-        final msg =
-            '$actorId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}';
-        final error = StateError(msg);
+        final error = HordaChangeMisdirection(
+          debugId,
+          actorId!,
+          env.key,
+          env.sourceId,
+        );
 
-        logger.severe(msg, error);
-        system.errorTrackingService?.reportError(error);
+        logger.severe('$error');
+        system.errorTrackingService?.reportError(error, StackTrace.current);
         continue;
       }
 
@@ -1692,6 +1731,17 @@ class ActorListViewHost extends ActorViewHost {
   @override
   void attach(EntityId actorId, covariant ListQueryResult result) {
     assert(result.items.length == result.value.length);
+
+    if (result.items.length != result.value.length) {
+      final error = HordaListQueryResultMismatch(
+        debugId,
+        result.value.length,
+        result.items.length,
+      );
+
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, StackTrace.current);
+    }
 
     super.attach(actorId, result);
 
