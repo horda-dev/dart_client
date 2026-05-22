@@ -503,7 +503,7 @@ class ActorQueryHost {
     this.parent,
     this.query,
     this.system, {
-    this.timeout = const Duration(seconds: 5),
+    this.timeout = _defaultTimeout,
   }) {
     logger = Logger('$parentLoggerName.${query.name}');
 
@@ -798,6 +798,8 @@ class ActorQueryHost {
   ActorQueryPathFunc? _watcher;
   Timer? _loadTimeout;
   bool _isStopped = false;
+
+  static const _defaultTimeout = Duration(seconds: 5);
 }
 
 /// States that an entity query can be in during its lifecycle.
