@@ -667,23 +667,18 @@ class ActorQueryHost {
     final extraViews = receivedViews.difference(expectedViews);
 
     if (missingViews.isNotEmpty || extraViews.isNotEmpty) {
-      final error = HordaQueryResultMismatch(
+      throw HordaQueryResultMismatch(
         debugId,
         missingViews,
         extraViews,
       );
-
-      logger.severe('$error');
-      system.errorTrackingService?.reportError(error, StackTrace.current);
-
-      _changeState(EntityQueryState.error);
-      return;
     }
 
     for (var entry in result.views.entries) {
       var host = _children[entry.key];
 
       if (host == null) {
+        // This throw should be covered by the mismatch check above, but keep it as safeguard.
         throw FluirError(
           '${entry.key} view not found in $actorId/${query.name} query',
         );
