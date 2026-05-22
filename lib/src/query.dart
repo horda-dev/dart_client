@@ -502,9 +502,8 @@ class ActorQueryHost {
     String parentLoggerName,
     this.parent,
     this.query,
-    this.system, {
-    this.timeout = _defaultTimeout,
-  }) {
+    this.system,
+  ) {
     logger = Logger('$parentLoggerName.${query.name}');
 
     // Devtool: tracking ActorQueryHosts creation
@@ -526,8 +525,6 @@ class ActorQueryHost {
   final EntityQuery query;
 
   final HordaClientSystem system;
-
-  final Duration timeout;
 
   late final Logger logger;
 
@@ -582,8 +579,8 @@ class ActorQueryHost {
 
     // Report abnormally slow queries, but do not interrupt them.
     final stackTrace = StackTrace.current;
-    final slowQueryTimer = Timer(timeout, () {
-      final error = HordaQueryRequestTimeout(debugId, timeout);
+    final slowQueryTimeout = Timer(_defaultTimeout, () {
+      final error = HordaQueryRequestTimeout(debugId, _defaultTimeout);
       logger.warning('$error');
       system.errorTrackingService?.reportError(error, stackTrace);
     });
@@ -621,7 +618,7 @@ class ActorQueryHost {
 
       _changeState(EntityQueryState.error);
     } finally {
-      slowQueryTimer.cancel();
+      slowQueryTimeout.cancel();
     }
   }
 
@@ -704,7 +701,7 @@ class ActorQueryHost {
     if (_notLoadedChildren.isNotEmpty) {
       final stackTrace = StackTrace.current;
 
-      _loadTimeout = Timer(timeout, () {
+      _loadTimeout = Timer(_defaultTimeout, () {
         final error = HordaQueryLoadTimeout(
           debugId,
           Set.of(_notLoadedChildren),
