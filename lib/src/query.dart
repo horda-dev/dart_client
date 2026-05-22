@@ -601,17 +601,20 @@ class ActorQueryHost {
 
       logger.info('$actorId: ran');
     } on TimeoutException catch (_, s) {
+      // Wrap timeouts into specific HordaQueryRequestTimeout.
       final error = HordaQueryRequestTimeout(debugId, timeout);
       logger.severe('$error');
       system.errorTrackingService?.reportError(error, s);
 
       _changeState(EntityQueryState.error);
     } on HordaQueryException catch (error, s) {
+      // Pass through to ErrorTrackingService.
       logger.severe('$error');
       system.errorTrackingService?.reportError(error, s);
 
       _changeState(EntityQueryState.error);
     } catch (e, s) {
+      // Wrap any other error types into HordaQueryFailed.
       final error = HordaQueryFailed(debugId, e);
       logger.severe('$error');
       system.errorTrackingService?.reportError(error, s);
