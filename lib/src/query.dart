@@ -502,8 +502,9 @@ class ActorQueryHost {
     String parentLoggerName,
     this.parent,
     this.query,
-    this.system,
-  ) {
+    this.system, {
+    this.timeout = const Duration(seconds: 5),
+  }) {
     logger = Logger('$parentLoggerName.${query.name}');
 
     // Devtool: tracking ActorQueryHosts creation
@@ -525,6 +526,8 @@ class ActorQueryHost {
   final EntityQuery query;
 
   final HordaClientSystem system;
+
+  final Duration timeout;
 
   late final Logger logger;
 
@@ -583,6 +586,7 @@ class ActorQueryHost {
       final result = await system.queryAndSubscribe(
         entityId: actorId,
         def: qdef,
+        timeout: timeout,
       );
 
       logger.finer('$actorId: got query result: ${result.toJson()}');
@@ -596,12 +600,18 @@ class ActorQueryHost {
       system.finalizeQuerySubscriptions(qdef, subscriptions());
 
       logger.info('$actorId: ran');
-    } catch (e, stack) {
-      _changeState(EntityQueryState.error);
+    } on TimeoutException catch (_, s) {
+      final error = HordaQueryRequestTimeout(debugId, timeout);
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, s);
 
-      logger.severe('$actorId: query ran with error: $e', e, stack);
-      // TODO: query error reporting will be expanded in https://github.com/horda-dev/dart_client/issues/51
-      system.errorTrackingService?.reportError(e, stack);
+      _changeState(EntityQueryState.error);
+    } catch (e, s) {
+      final error = HordaQueryFailed(debugId, e);
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, s);
+
+      _changeState(EntityQueryState.error);
     }
   }
 
@@ -665,11 +675,32 @@ class ActorQueryHost {
       host.attach(actorId, entry.value);
     }
 
+    _loadTimeout?.cancel();
+
+    if (_notLoadedChildren.isNotEmpty) {
+      final stackTrace = StackTrace.current;
+
+      _loadTimeout = Timer(timeout, () {
+        final error = HordaQueryLoadTimeout(
+          debugId,
+          Set.of(_notLoadedChildren),
+        );
+
+        logger.severe('$error');
+        system.errorTrackingService?.reportError(error, stackTrace);
+
+        _changeState(EntityQueryState.error);
+      });
+    }
+
     logger.info('$actorId: attached');
   }
 
   void detach() {
     logger.fine('$actorId: detaching...');
+
+    _loadTimeout?.cancel();
+    _loadTimeout = null;
 
     if (!isAttached) {
       logger.warning('detaching detached view');
@@ -699,6 +730,10 @@ class ActorQueryHost {
   /// to avoid flooding with unsubscribe requests for each child host on [ListPageCleared].
   Future<void> stop({bool unsubscribe = true}) async {
     logger.fine('$actorId: stopping...');
+
+    _loadTimeout?.cancel();
+    _loadTimeout = null;
+
     _isStopped = true;
 
     if (unsubscribe) {
@@ -741,6 +776,9 @@ class ActorQueryHost {
     );
 
     if (_notLoadedChildren.isEmpty) {
+      _loadTimeout?.cancel();
+      _loadTimeout = null;
+
       _changeState(EntityQueryState.loaded);
       parent?.reportQuery(actorId!);
     }
@@ -755,10 +793,10 @@ class ActorQueryHost {
   }
 
   var _state = EntityQueryState.created;
-  // maps view name to view host
   final _children = <String, ActorViewHost>{};
   final _notLoadedChildren = <String>{};
   ActorQueryPathFunc? _watcher;
+  Timer? _loadTimeout;
   bool _isStopped = false;
 }
 
@@ -769,6 +807,45 @@ class ActorQueryHost {
 /// - [error]: Query execution failed
 /// - [stopped]: Query has been terminated and cleaned up
 enum EntityQueryState { created, loaded, error, stopped }
+
+sealed class HordaQueryException implements Exception {
+  HordaQueryException();
+}
+
+/// The network request to query and subscribe failed with an unexpected error.
+final class HordaQueryFailed extends HordaQueryException {
+  HordaQueryFailed(this.debugId, this.cause);
+
+  final String debugId;
+  final Object cause;
+
+  @override
+  String toString() => 'HordaQueryFailed: $debugId failed with: $cause';
+}
+
+/// The network request to query and subscribe did not respond within the timeout.
+final class HordaQueryRequestTimeout extends HordaQueryException {
+  HordaQueryRequestTimeout(this.debugId, this.timeout);
+
+  final String debugId;
+  final Duration timeout;
+
+  @override
+  String toString() =>
+      'HordaQueryRequestTimeout: $debugId timed out after ${timeout.inSeconds}s';
+}
+
+/// The query received a result but not all child views reported ready within the timeout.
+final class HordaQueryLoadTimeout extends HordaQueryException {
+  HordaQueryLoadTimeout(this.debugId, this.pendingViews);
+
+  final String debugId;
+  final Set<String> pendingViews;
+
+  @override
+  String toString() =>
+      'HordaQueryLoadTimeout: $debugId timed out waiting for views: $pendingViews';
+}
 
 /// Interface for collecting entity views in a query.
 ///
