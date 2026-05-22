@@ -908,19 +908,15 @@ final class HordaListQueryResultMismatch extends HordaQueryException {
 final class HordaChangeMisdirection extends HordaQueryException {
   HordaChangeMisdirection(
     this.debugId,
-    this.expectedEntityId,
-    this.receivedEntityId,
     this.sourceId,
   );
 
   final String debugId;
-  final String expectedEntityId;
-  final String receivedEntityId;
   final String sourceId;
 
   @override
   String toString() =>
-      'HordaChangeMisdirection: $debugId expected entity: $expectedEntityId, received entity: $receivedEntityId, source: $sourceId';
+      'HordaChangeMisdirection: $debugId received changes addressed to $sourceId';
 }
 
 /// Interface for collecting entity views in a query.
@@ -1161,9 +1157,7 @@ abstract class ActorViewHost {
       if (env.key != actorId) {
         final error = HordaChangeMisdirection(
           debugId,
-          actorId!,
-          env.key,
-          env.sourceId,
+          '${env.entityName}/${env.sourceId}',
         );
 
         logger.severe('$error');
