@@ -606,6 +606,11 @@ class ActorQueryHost {
       system.errorTrackingService?.reportError(error, s);
 
       _changeState(EntityQueryState.error);
+    } on HordaQueryException catch (error, s) {
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, s);
+
+      _changeState(EntityQueryState.error);
     } catch (e, s) {
       final error = HordaQueryFailed(debugId, e);
       logger.severe('$error');
