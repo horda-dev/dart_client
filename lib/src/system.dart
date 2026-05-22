@@ -228,6 +228,7 @@ class HordaClientSystem {
   Future<QueryResult> queryAndSubscribe({
     required String entityId,
     required QueryDef def,
+    required Duration timeout,
   }) async {
     logger.fine('$entityId: atomic query and subscribe...');
 
@@ -238,6 +239,7 @@ class HordaClientSystem {
       final result = await conn.queryAndSubscribe(
         actorId: entityId,
         def: def,
+        timeout: timeout,
       );
 
       logger.info('$entityId: atomic query and subscribe completed');

@@ -41,6 +41,7 @@ class MockConnection extends ValueNotifier<HordaConnectionState>
   Future<QueryResult> queryAndSubscribe({
     required String actorId,
     required QueryDef def,
+    required Duration timeout,
   }) async {
     logger.info('queryAndSubscribe called for $actorId');
     return _createMockResult(actorId, def);
