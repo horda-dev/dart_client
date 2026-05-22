@@ -539,7 +539,7 @@ class ActorQueryHost {
   Map<String, ActorViewHost> get children => _children;
 
   String get debugId {
-    return '${isAttached ? actorId : "unattached"}/${query.runtimeType}';
+    return '${logger.fullName}/${isAttached ? actorId : "unattached"}';
   }
 
   void watch(ActorQueryPath path, ActorQueryPathFunc cb) {
@@ -577,6 +577,14 @@ class ActorQueryHost {
 
     this.actorId = actorId;
 
+    // Report abnormally slow queries, but do not interrupt them.
+    final stackTrace = StackTrace.current;
+    final slowQueryTimeout = Timer(_defaultTimeout, () {
+      final error = HordaQueryRequestTimeout(debugId, _defaultTimeout);
+      logger.warning('$error');
+      system.errorTrackingService?.reportError(error, stackTrace);
+    });
+
     try {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
@@ -596,12 +604,21 @@ class ActorQueryHost {
       system.finalizeQuerySubscriptions(qdef, subscriptions());
 
       logger.info('$actorId: ran');
-    } catch (e, stack) {
-      _changeState(EntityQueryState.error);
+    } on HordaQueryException catch (error, s) {
+      // Pass through to ErrorTrackingService.
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, s);
 
-      logger.severe('$actorId: query ran with error: $e', e, stack);
-      // TODO: query error reporting will be expanded in https://github.com/horda-dev/dart_client/issues/51
-      system.errorTrackingService?.reportError(e, stack);
+      _changeState(EntityQueryState.error);
+    } catch (e, s) {
+      // Wrap any other error types into HordaQueryFailed.
+      final error = HordaQueryFailed(debugId, e);
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, s);
+
+      _changeState(EntityQueryState.error);
+    } finally {
+      slowQueryTimeout.cancel();
     }
   }
 
@@ -646,10 +663,24 @@ class ActorQueryHost {
 
     logger.fine('$oldActorId: actorId changed to $actorId');
 
+    final expectedViews = query.views.keys.toSet();
+    final receivedViews = result.views.keys.toSet();
+    final missingViews = expectedViews.difference(receivedViews);
+    final extraViews = receivedViews.difference(expectedViews);
+
+    if (missingViews.isNotEmpty || extraViews.isNotEmpty) {
+      throw HordaQueryResultMismatch(
+        debugId,
+        missingViews,
+        extraViews,
+      );
+    }
+
     for (var entry in result.views.entries) {
       var host = _children[entry.key];
 
       if (host == null) {
+        // This throw should be covered by the mismatch check above, but keep it as safeguard.
         throw FluirError(
           '${entry.key} view not found in $actorId/${query.name} query',
         );
@@ -665,11 +696,32 @@ class ActorQueryHost {
       host.attach(actorId, entry.value);
     }
 
+    _loadTimeout?.cancel();
+
+    if (_notLoadedChildren.isNotEmpty) {
+      final stackTrace = StackTrace.current;
+
+      _loadTimeout = Timer(_defaultTimeout, () {
+        final error = HordaQueryLoadTimeout(
+          debugId,
+          Set.of(_notLoadedChildren),
+        );
+
+        logger.severe('$error');
+        system.errorTrackingService?.reportError(error, stackTrace);
+
+        _changeState(EntityQueryState.error);
+      });
+    }
+
     logger.info('$actorId: attached');
   }
 
   void detach() {
     logger.fine('$actorId: detaching...');
+
+    _loadTimeout?.cancel();
+    _loadTimeout = null;
 
     if (!isAttached) {
       logger.warning('detaching detached view');
@@ -699,6 +751,10 @@ class ActorQueryHost {
   /// to avoid flooding with unsubscribe requests for each child host on [ListPageCleared].
   Future<void> stop({bool unsubscribe = true}) async {
     logger.fine('$actorId: stopping...');
+
+    _loadTimeout?.cancel();
+    _loadTimeout = null;
+
     _isStopped = true;
 
     if (unsubscribe) {
@@ -707,11 +763,11 @@ class ActorQueryHost {
 
     var oldActorId = actorId;
 
-    _changeState(EntityQueryState.stopped);
-
     if (isAttached) {
       detach();
     }
+
+    _changeState(EntityQueryState.stopped);
 
     for (var child in _children.values) {
       child.stop();
@@ -741,6 +797,9 @@ class ActorQueryHost {
     );
 
     if (_notLoadedChildren.isEmpty) {
+      _loadTimeout?.cancel();
+      _loadTimeout = null;
+
       _changeState(EntityQueryState.loaded);
       parent?.reportQuery(actorId!);
     }
@@ -759,7 +818,10 @@ class ActorQueryHost {
   final _children = <String, ActorViewHost>{};
   final _notLoadedChildren = <String>{};
   ActorQueryPathFunc? _watcher;
+  Timer? _loadTimeout;
   bool _isStopped = false;
+
+  static const _defaultTimeout = Duration(seconds: 5);
 }
 
 /// States that an entity query can be in during its lifecycle.
@@ -769,6 +831,90 @@ class ActorQueryHost {
 /// - [error]: Query execution failed
 /// - [stopped]: Query has been terminated and cleaned up
 enum EntityQueryState { created, loaded, error, stopped }
+
+sealed class HordaQueryException implements Exception {
+  HordaQueryException();
+}
+
+/// The network request to query and subscribe failed with an unexpected error.
+final class HordaQueryFailed extends HordaQueryException {
+  HordaQueryFailed(this.debugId, this.cause);
+
+  final String debugId;
+  final Object cause;
+
+  @override
+  String toString() => 'HordaQueryFailed: $debugId failed with: $cause';
+}
+
+/// The network request to query and subscribe did not respond within the timeout.
+final class HordaQueryRequestTimeout extends HordaQueryException {
+  HordaQueryRequestTimeout(this.debugId, this.timeout);
+
+  final String debugId;
+  final Duration timeout;
+
+  @override
+  String toString() =>
+      'HordaQueryRequestTimeout: $debugId has not received a response after ${timeout.inSeconds}s';
+}
+
+/// The query received a result but not all child views reported ready within the timeout.
+final class HordaQueryLoadTimeout extends HordaQueryException {
+  HordaQueryLoadTimeout(this.debugId, this.pendingViews);
+
+  final String debugId;
+  final Set<String> pendingViews;
+
+  @override
+  String toString() =>
+      'HordaQueryLoadTimeout: $debugId timed out waiting for views: $pendingViews';
+}
+
+/// The query result did not include all views requested by the query.
+final class HordaQueryResultMismatch extends HordaQueryException {
+  HordaQueryResultMismatch(this.debugId, this.missingViews, this.extraViews);
+
+  final String debugId;
+  final Set<String> missingViews;
+  final Set<String> extraViews;
+
+  @override
+  String toString() =>
+      'HordaQueryResultMismatch: $debugId missing views: $missingViews, extra views: $extraViews';
+}
+
+/// The list query result contained a different number of list values and item query results.
+final class HordaListQueryResultMismatch extends HordaQueryException {
+  HordaListQueryResultMismatch(
+    this.debugId,
+    this.valueLength,
+    this.itemsLength,
+  );
+
+  final String debugId;
+  final int valueLength;
+  final int itemsLength;
+
+  @override
+  String toString() =>
+      'HordaListQueryResultMismatch: $debugId value length: $valueLength, item query length: $itemsLength';
+}
+
+/// A view host received a change envelope for a different actor.
+final class HordaChangeMisdirection extends HordaQueryException {
+  HordaChangeMisdirection(
+    this.debugId,
+    this.sourceId,
+  );
+
+  final String debugId;
+  final String sourceId;
+
+  @override
+  String toString() =>
+      'HordaChangeMisdirection: $debugId received changes addressed to $sourceId';
+}
 
 /// Interface for collecting entity views in a query.
 ///
@@ -815,7 +961,7 @@ abstract class ActorViewHost {
   bool get isAttached => actorId != null;
 
   String get debugId {
-    return '${isAttached ? actorId : "unattached"}/${view.name}';
+    return '${logger.fullName}/${isAttached ? actorId : "unattached"}';
   }
 
   /// id is an view's actor id or composite attribute id
@@ -1006,12 +1152,13 @@ abstract class ActorViewHost {
 
       // Host must listen to only those changes which are addressed to his actor
       if (env.key != actorId) {
-        final msg =
-            '$actorId received changes which don\'t belong to him. Changes sourceId: ${env.sourceId}';
-        final error = StateError(msg);
+        final error = HordaChangeMisdirection(
+          debugId,
+          '${env.entityName}/${env.sourceId}',
+        );
 
-        logger.severe(msg, error);
-        system.errorTrackingService?.reportError(error);
+        logger.severe('$error');
+        system.errorTrackingService?.reportError(error, StackTrace.current);
         continue;
       }
 
@@ -1581,6 +1728,17 @@ class ActorListViewHost extends ActorViewHost {
   @override
   void attach(EntityId actorId, covariant ListQueryResult result) {
     assert(result.items.length == result.value.length);
+
+    if (result.items.length != result.value.length) {
+      final error = HordaListQueryResultMismatch(
+        debugId,
+        result.value.length,
+        result.items.length,
+      );
+
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, StackTrace.current);
+    }
 
     super.attach(actorId, result);
 

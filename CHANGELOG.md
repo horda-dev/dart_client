@@ -1,3 +1,7 @@
+## 0.31.1
+
+- **FEAT**: Expand query error reporting.
+
 ## 0.31.0
 
 - **FEAT**: Expand `ErrorTrackingService` interface, improve error handling and reporting.
