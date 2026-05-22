@@ -580,13 +580,20 @@ class ActorQueryHost {
 
     this.actorId = actorId;
 
+    // Report abnormally slow queries, but do not interrupt them.
+    final stackTrace = StackTrace.current;
+    final slowQueryTimer = Timer(timeout, () {
+      final error = HordaQueryRequestTimeout(debugId, timeout);
+      logger.warning('$error');
+      system.errorTrackingService?.reportError(error, stackTrace);
+    });
+
     try {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
       final result = await system.queryAndSubscribe(
         entityId: actorId,
         def: qdef,
-        timeout: timeout,
       );
 
       logger.finer('$actorId: got query result: ${result.toJson()}');
@@ -600,13 +607,6 @@ class ActorQueryHost {
       system.finalizeQuerySubscriptions(qdef, subscriptions());
 
       logger.info('$actorId: ran');
-    } on TimeoutException catch (_, s) {
-      // Wrap timeouts into specific HordaQueryRequestTimeout.
-      final error = HordaQueryRequestTimeout(debugId, timeout);
-      logger.severe('$error');
-      system.errorTrackingService?.reportError(error, s);
-
-      _changeState(EntityQueryState.error);
     } on HordaQueryException catch (error, s) {
       // Pass through to ErrorTrackingService.
       logger.severe('$error');
@@ -620,6 +620,8 @@ class ActorQueryHost {
       system.errorTrackingService?.reportError(error, s);
 
       _changeState(EntityQueryState.error);
+    } finally {
+      slowQueryTimer.cancel();
     }
   }
 
@@ -857,7 +859,7 @@ final class HordaQueryRequestTimeout extends HordaQueryException {
 
   @override
   String toString() =>
-      'HordaQueryRequestTimeout: $debugId timed out after ${timeout.inSeconds}s';
+      'HordaQueryRequestTimeout: $debugId has not received the response after ${timeout.inSeconds}s';
 }
 
 /// The query received a result but not all child views reported ready within the timeout.

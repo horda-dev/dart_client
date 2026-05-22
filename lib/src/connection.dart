@@ -90,7 +90,6 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   Future<QueryResult> queryAndSubscribe({
     required String actorId,
     required QueryDef def,
-    required Duration timeout,
   });
 
   /// Sends a command to an entity without waiting for response
@@ -249,7 +248,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   Future<QueryResult> queryAndSubscribe({
     required String actorId,
     required QueryDef def,
-    required Duration timeout,
   }) async {
     logger.fine('$actorId: atomic query and subscribe...');
 
@@ -259,16 +257,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     );
 
     final boxId = _send(msg);
-    final res = await _boxStream(boxId)
-        .map((box) => box.msg)
-        .timeout(
-          timeout,
-          onTimeout: (_) => throw TimeoutException(
-            'queryAndSubscribe for ${def.entityName}/$actorId did not receive a response',
-            timeout,
-          ),
-        )
-        .first;
+    final res = await _boxStream(boxId).map((box) => box.msg).first;
 
     if (res is! QueryResultWsMsg) {
       logger.severe('query and subscribe failed with $res');
