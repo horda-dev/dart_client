@@ -656,6 +656,25 @@ class ActorQueryHost {
 
     logger.fine('$oldActorId: actorId changed to $actorId');
 
+    final expectedViews = query.views.keys.toSet();
+    final receivedViews = result.views.keys.toSet();
+    final missingViews = expectedViews.difference(receivedViews);
+    final extraViews = receivedViews.difference(expectedViews);
+
+    if (missingViews.isNotEmpty || extraViews.isNotEmpty) {
+      final error = HordaQueryResultMismatch(
+        debugId,
+        missingViews,
+        extraViews,
+      );
+
+      logger.severe('$error');
+      system.errorTrackingService?.reportError(error, StackTrace.current);
+
+      _changeState(EntityQueryState.error);
+      return;
+    }
+
     for (var entry in result.views.entries) {
       var host = _children[entry.key];
 
@@ -847,6 +866,19 @@ final class HordaQueryLoadTimeout extends HordaQueryException {
   @override
   String toString() =>
       'HordaQueryLoadTimeout: $debugId timed out waiting for views: $pendingViews';
+}
+
+/// The query result did not include all views requested by the query.
+final class HordaQueryResultMismatch extends HordaQueryException {
+  HordaQueryResultMismatch(this.debugId, this.missingViews, this.extraViews);
+
+  final String debugId;
+  final Set<String> missingViews;
+  final Set<String> extraViews;
+
+  @override
+  String toString() =>
+      'HordaQueryResultMismatch: $debugId missing views: $missingViews, extra views: $extraViews';
 }
 
 /// Interface for collecting entity views in a query.
