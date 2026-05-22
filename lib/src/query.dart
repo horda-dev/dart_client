@@ -761,11 +761,11 @@ class ActorQueryHost {
 
     var oldActorId = actorId;
 
-    _changeState(EntityQueryState.stopped);
-
     if (isAttached) {
       detach();
     }
+
+    _changeState(EntityQueryState.stopped);
 
     for (var child in _children.values) {
       child.stop();
