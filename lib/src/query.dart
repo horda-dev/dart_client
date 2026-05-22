@@ -542,7 +542,7 @@ class ActorQueryHost {
   Map<String, ActorViewHost> get children => _children;
 
   String get debugId {
-    return '${isAttached ? actorId : "unattached"}/${query.runtimeType}';
+    return '${logger.fullName}/${isAttached ? actorId : "unattached"}';
   }
 
   void watch(ActorQueryPath path, ActorQueryPathFunc cb) {
@@ -859,7 +859,7 @@ final class HordaQueryRequestTimeout extends HordaQueryException {
 
   @override
   String toString() =>
-      'HordaQueryRequestTimeout: $debugId has not received the response after ${timeout.inSeconds}s';
+      'HordaQueryRequestTimeout: $debugId has not received a response after ${timeout.inSeconds}s';
 }
 
 /// The query received a result but not all child views reported ready within the timeout.
@@ -968,7 +968,7 @@ abstract class ActorViewHost {
   bool get isAttached => actorId != null;
 
   String get debugId {
-    return '${isAttached ? actorId : "unattached"}/${view.name}';
+    return '${logger.fullName}/${isAttached ? actorId : "unattached"}';
   }
 
   /// id is an view's actor id or composite attribute id
