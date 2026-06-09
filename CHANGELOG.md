@@ -1,3 +1,7 @@
+## 0.31.3
+
+- **FIX**: Guard from adding duplicate items in `RefListView`.
+
 ## 0.31.2
 
 - **FIX**: Skip th first 3 connection error reporting to suppress Android DSN errors noise.
