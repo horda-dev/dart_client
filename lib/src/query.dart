@@ -1849,6 +1849,13 @@ class ActorListViewHost extends ActorViewHost {
     }
 
     if (change is ListPageItemAdded) {
+      if (_children.containsKey(change.refId)) {
+        logger.warning(
+          '$id: skipping duplicate item from ListPageItemAdded for ${change.refId}',
+        );
+        return previousValue;
+      }
+
       final host = ActorQueryHost(
         '$parentLoggerName.${view.name}',
         this,
