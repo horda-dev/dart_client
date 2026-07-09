@@ -155,6 +155,14 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
   final Logger logger;
 
+  /// Default timeout for socket requests whose duration isn't caller-specified.
+  ///
+  /// This is a safety net for a half-open socket where the server never
+  /// replies (a clean drop is resolved immediately by [_failRequestsForChannel]).
+  /// View reads and subscription round-trips do negligible server-side work, so
+  /// their only variable is network latency, for which 10 seconds is ample.
+  static const _defaultRequestTimeout = Duration(seconds: 10);
+
   @override
   Future<void> open() async {
     logger.fine('opening...');
@@ -243,7 +251,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     required QueryDef def,
   }) async {
     final msg = QueryWsMsg(actorId: actorId, def: def);
-    final res = await _send(msg);
+
+    final res = await _send(msg, timeout: _defaultRequestTimeout);
 
     if (res is! QueryResultWsMsg) {
       logger.severe('query failed with $res');
@@ -265,7 +274,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       def: def,
     );
 
-    final res = await _send(msg);
+    final res = await _send(msg, timeout: _defaultRequestTimeout);
 
     if (res is! QueryResultWsMsg) {
       logger.severe('query and subscribe failed with $res');
@@ -286,7 +295,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     logger.fine('sending $cmd... to $to');
 
     final msg = SendCommandWsMsg(entityName, to, cmd);
-    final res = await _send(msg);
+    final res = await _send(msg, timeout: _defaultRequestTimeout);
 
     if (res is! SendCommandAckWsMsg) {
       logger.severe('send $cmd to $to failed with $res');
@@ -360,7 +369,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     final msg = SubscribeViewsWsMsg(subs.toList());
 
-    final res = await _send(msg);
+    final res = await _send(msg, timeout: _defaultRequestTimeout);
 
     if (res is! SubscribeViewsAckWsMsg) {
       logger.severe('subscribe views resulted in $res');
@@ -375,7 +384,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     logger.fine('unsubscribing from ${subs.toList()} views...');
 
     final msg = UnsubscribeViewsWsMsg(subs.toList());
-    final res = await _send(msg);
+
+    final res = await _send(msg, timeout: _defaultRequestTimeout);
 
     if (res is! UnsubscribeViewsResWsMsg) {
       logger.severe('unsubscribe views resulted in $res');
