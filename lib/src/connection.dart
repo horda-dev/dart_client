@@ -3,12 +3,10 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:async/async.dart';
 import 'package:flutter/foundation.dart';
 import 'package:horda_core/horda_core.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
-import 'package:rxdart/rxdart.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'system.dart';
@@ -244,10 +242,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     required String actorId,
     required QueryDef def,
   }) async {
-    var msg = QueryWsMsg(actorId: actorId, def: def);
-
-    var boxId = _send(msg);
-    var res = await _boxStream(boxId).map((box) => box.msg).first;
+    final msg = QueryWsMsg(actorId: actorId, def: def);
+    final res = await _send(msg);
 
     if (res is! QueryResultWsMsg) {
       logger.severe('query failed with $res');
@@ -269,8 +265,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       def: def,
     );
 
-    final boxId = _send(msg);
-    final res = await _boxStream(boxId).map((box) => box.msg).first;
+    final res = await _send(msg);
 
     if (res is! QueryResultWsMsg) {
       logger.severe('query and subscribe failed with $res');
@@ -290,10 +285,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   ) async {
     logger.fine('sending $cmd... to $to');
 
-    var msg = SendCommandWsMsg(entityName, to, cmd);
-
-    var boxId = _send(msg);
-    var res = await _boxStream(boxId).map((box) => box.msg).first;
+    final msg = SendCommandWsMsg(entityName, to, cmd);
+    final res = await _send(msg);
 
     if (res is! SendCommandAckWsMsg) {
       logger.severe('send $cmd to $to failed with $res');
@@ -315,10 +308,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     final msg = CallCommandWsMsg(entityName, to, cmd);
 
-    final boxId = _send(msg);
-    final res = await _boxStream(
-      boxId,
-    ).map((box) => box.msg).timeout(timeout).first;
+    final res = await _send(msg, timeout: timeout);
 
     if (res is! CallCommandResWsMsg) {
       logger.severe('call failed with $res');
@@ -353,10 +343,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     final msg = DispatchEventWsMsg(event);
 
-    final boxId = _send(msg);
-    final res = await _boxStream(
-      boxId,
-    ).map((box) => box.msg).timeout(timeout).first;
+    final res = await _send(msg, timeout: timeout);
 
     if (res is! DispatchEventResWsMsg) {
       logger.severe('dispatch failed with $res');
@@ -373,8 +360,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     final msg = SubscribeViewsWsMsg(subs.toList());
 
-    final boxId = _send(msg);
-    final res = await _boxStream(boxId).map((box) => box.msg).first;
+    final res = await _send(msg);
 
     if (res is! SubscribeViewsAckWsMsg) {
       logger.severe('subscribe views resulted in $res');
@@ -388,10 +374,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   Future<void> unsubscribeViews(Iterable<ActorViewSub> subs) async {
     logger.fine('unsubscribing from ${subs.toList()} views...');
 
-    var msg = UnsubscribeViewsWsMsg(subs.toList());
-
-    var boxId = _send(msg);
-    var res = await _boxStream(boxId).map((box) => box.msg).first;
+    final msg = UnsubscribeViewsWsMsg(subs.toList());
+    final res = await _send(msg);
 
     if (res is! UnsubscribeViewsResWsMsg) {
       logger.severe('unsubscribe views resulted in $res');
@@ -399,10 +383,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     }
 
     logger.info('unsubscribed from ${subs.toList()} views');
-  }
-
-  Stream<WsMessageBox> _boxStream(int msgId) {
-    return _streamGroup.stream.where((box) => box.id == msgId);
   }
 
   Future<bool> _connect() async {
@@ -454,14 +434,16 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
         throw ChannelDisposedWhileWaitingException();
       }
 
-      _channelStream = newChannel.stream
-          .doOnData((data) => logger.fine('received $data'))
-          .doOnError(_onStreamError)
-          .doOnDone(_onStreamDone)
-          .doOnCancel(() => logger.warning('connection got canceled'))
-          .map((data) => WsMessageBox.decodeJson(data, logger));
-      _streamGroup.add(_channelStream!);
-      _sub = _streamGroup.stream.listen(_onStreamData);
+      _sub = newChannel.stream.listen(
+        (data) {
+          logger.fine('received $data');
+          _onStreamData(WsMessageBox.decodeJson(data, logger));
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          _onStreamError(newChannel, error, stackTrace);
+        },
+        onDone: () => _onStreamDone(newChannel),
+      );
 
       logger.info('connected');
 
@@ -485,23 +467,50 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     }
   }
 
-  int _send(WsMessage msg) {
+  Future<WsMessage> _send(
+    WsMessage msg, {
+    Duration? timeout,
+  }) {
     logger.finer('sending msg $msg...');
 
     _msgId += 1;
-    var box = WsMessageBox(id: _msgId, msg: msg);
+    final request = _PendingRequest(
+      WsMessageBox(id: _msgId, msg: msg),
+    );
 
     if (!_isConnected) {
-      _queue.addLast(box);
-      return _msgId;
+      _queue.addLast(request);
+      return _awaitResponse(request, timeout: timeout);
     }
 
     _drainQueue();
-    _sendBox(box);
+    _sendRequest(request);
 
     logger.info('sent msg $msg');
 
-    return _msgId;
+    return _awaitResponse(request, timeout: timeout);
+  }
+
+  Future<WsMessage> _awaitResponse(
+    _PendingRequest request, {
+    Duration? timeout,
+  }) {
+    if (timeout == null) {
+      return request.completer.future;
+    }
+
+    return request.completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        _removeRequest(request);
+        throw TimeoutException('request ${request.box.id} timed out', timeout);
+      },
+    );
+  }
+
+  void _removeRequest(_PendingRequest request) {
+    _pending.remove(request.box.id);
+    _queue.remove(request);
   }
 
   void _drainQueue() {
@@ -513,21 +522,38 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     logger.fine('draining queue...');
 
     while (_queue.isNotEmpty) {
-      var box = _queue.removeFirst();
-      _sendBox(box);
+      final request = _queue.removeFirst();
+      _sendRequest(request);
     }
 
     logger.fine('queue drained');
   }
 
-  void _sendBox(WsMessageBox box) {
-    logger.finer('sending box $box..');
+  void _sendRequest(_PendingRequest request) {
+    final channel = _channel;
+    if (channel == null) {
+      request.completer.completeError(
+        ConnectionException('attempted to send without an active connection'),
+      );
+      return;
+    }
 
-    var data = box.encodeJson(logger);
+    request.channel = channel;
+    _pending[request.box.id] = request;
 
-    _channel!.sink.add(data);
+    logger.finer('sending box ${request.box}..');
 
-    logger.fine('sent box $box');
+    final data = request.box.encodeJson(logger);
+
+    try {
+      channel.sink.add(data);
+    } catch (error, stackTrace) {
+      _pending.remove(request.box.id);
+      request.completer.completeError(error, stackTrace);
+      return;
+    }
+
+    logger.fine('sent box ${request.box}');
     logger.fine('sent data $data');
   }
 
@@ -543,13 +569,17 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   void _close() {
     logger.fine('closing channel...');
 
-    _sub?.cancel();
-    if (_channelStream != null) {
-      _streamGroup.remove(_channelStream!);
+    final channel = _channel;
+    if (channel != null) {
+      _failRequestsForChannel(
+        channel,
+        StackTrace.current,
+      );
     }
+
+    _sub?.cancel();
     _channel?.sink.close();
     _channel = null;
-    _channelStream = null;
     _sub = null;
     _isConnected = false;
 
@@ -558,6 +588,12 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
   void _onStreamData(WsMessageBox box) {
     logger.info('received $box');
+
+    final request = _pending.remove(box.id);
+    if (request != null) {
+      request.completer.complete(box.msg);
+      return;
+    }
 
     final msg = box.msg;
 
@@ -569,20 +605,46 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     }
   }
 
-  void _onStreamError(Object error, StackTrace stack) {
+  void _onStreamError(
+    WebSocketChannel channel,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (!identical(_channel, channel)) {
+      return;
+    }
+
     logger.warning('got error: $error');
+
+    _isConnected = false;
+
+    _failRequestsForChannel(
+      channel,
+      stackTrace,
+    );
 
     Future.delayed(Duration.zero, () => open());
   }
 
-  void _onStreamDone() {
+  void _onStreamDone(WebSocketChannel channel) {
+    if (!identical(_channel, channel)) {
+      return;
+    }
+
     logger.warning(
-      'closed with code: ${_channel?.closeCode} reason ${_channel?.closeReason}',
+      'closed with code: ${channel.closeCode} reason ${channel.closeReason}',
     );
 
     system.errorTrackingService?.reportConnectionClosure(
-      _channel?.closeCode,
-      _channel?.closeReason,
+      channel.closeCode,
+      channel.closeReason,
+    );
+
+    _isConnected = false;
+
+    _failRequestsForChannel(
+      channel,
+      StackTrace.current,
     );
 
     if (value is ConnectionStateDisconnected) {
@@ -593,16 +655,36 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     Future.delayed(Duration.zero, () => open());
   }
 
+  void _failRequestsForChannel(
+    WebSocketChannel channel,
+    StackTrace stackTrace,
+  ) {
+    final error = ConnectionClosedException();
+    final requests = _pending.values
+        .where((request) => identical(request.channel, channel))
+        .toList();
+
+    if (requests.isNotEmpty) {
+      logger.warning(
+        'failing ${requests.length} pending request(s): $error',
+      );
+    }
+
+    for (final request in requests) {
+      _pending.remove(request.box.id);
+      request.completer.completeError(error, stackTrace);
+    }
+  }
+
   String _url;
   String _apiKey;
   WebSocketChannel? _channel;
-  Stream<WsMessageBox>? _channelStream;
   StreamSubscription? _sub;
   int _msgId = 0;
   bool _isConnected = false;
   bool _isFirstTimeConnect = true;
-  final _streamGroup = StreamGroup<WsMessageBox>.broadcast();
-  final _queue = Queue<WsMessageBox>();
+  final _pending = <int, _PendingRequest>{};
+  final _queue = Queue<_PendingRequest>();
   int _connectFailureCount = 0;
   Object? _lastConnectError;
   StackTrace? _lastConnectStack;
@@ -617,6 +699,19 @@ class ConnectionException implements Exception {
   String toString() {
     return message;
   }
+}
+
+/// The WebSocket connection closed before a sent request received a response.
+class ConnectionClosedException extends ConnectionException {
+  ConnectionClosedException() : super('web socket connection closed');
+}
+
+class _PendingRequest {
+  _PendingRequest(this.box);
+
+  final WsMessageBox box;
+  final completer = Completer<WsMessage>();
+  WebSocketChannel? channel;
 }
 
 /// This exception may occur if a new websocket channel
