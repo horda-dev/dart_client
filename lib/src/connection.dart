@@ -156,11 +156,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   final Logger logger;
 
   /// Default timeout for socket requests whose duration isn't caller-specified.
-  ///
-  /// This is a safety net for a half-open socket where the server never
-  /// replies (a clean drop is resolved immediately by [_failRequestsForChannel]).
-  /// View reads and subscription round-trips do negligible server-side work, so
-  /// their only variable is network latency, for which 10 seconds is ample.
   static const _defaultRequestTimeout = Duration(seconds: 10);
 
   @override
