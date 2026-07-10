@@ -191,7 +191,7 @@ void main() {
           entityId: 'other-speech',
           def: queryDef,
         ),
-        throwsA(isA<ConnectionClosedException>()),
+        throwsA(isA<ConnectionException>()),
       );
       await fixture.firstQueryReceived;
 
@@ -227,7 +227,7 @@ void main() {
           entityId: 'other-user',
           def: queryDef,
         ),
-        throwsA(isA<ConnectionClosedException>()),
+        throwsA(isA<ConnectionException>()),
       );
       await fixture.firstQueryReceived;
 

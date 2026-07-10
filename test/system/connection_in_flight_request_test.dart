@@ -78,7 +78,7 @@ void main() {
       final def = _FakeUserNameQuery().queryBuilder().build();
       final requestResult = expectLater(
         conn.queryAndSubscribe(actorId: 'user-1', def: def),
-        throwsA(isA<ConnectionClosedException>()),
+        throwsA(isA<ConnectionException>()),
       );
 
       await _waitUntil(() => querySubReceived);
