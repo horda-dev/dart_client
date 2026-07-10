@@ -1,3 +1,7 @@
+## 0.31.3
+
+- **FIX**: Fail in-flight WebSocket requests when their connection closes, preventing query hosts and view projections from hanging after reconnect.
+
 ## 0.31.2
 
 - **FIX**: Skip th first 3 connection error reporting to suppress Android DSN errors noise.
