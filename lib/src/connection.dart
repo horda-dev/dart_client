@@ -668,7 +668,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       stackTrace,
     );
 
-    Future.delayed(Duration.zero, () => open());
+    _scheduleReconnect();
   }
 
   void _onStreamDone(WebSocketChannel channel) {
@@ -692,12 +692,18 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       StackTrace.current,
     );
 
-    if (value is ConnectionStateDisconnected) {
-      // Don't try to reconnect when close() was called.
-      return;
-    }
+    _scheduleReconnect();
+  }
 
-    Future.delayed(Duration.zero, () => open());
+  void _scheduleReconnect() {
+    Future.delayed(Duration.zero, () {
+      if (value is ConnectionStateDisconnected) {
+        // Don't try to reconnect when close() was called.
+        return;
+      }
+
+      open();
+    });
   }
 
   void _failRequestsForChannel(
