@@ -165,6 +165,8 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   /// Default timeout for socket requests whose duration isn't caller-specified.
   static const _defaultRequestTimeout = Duration(seconds: 10);
 
+  static const _clientCloseReason = 'Client closed connection';
+
   @override
   Future<void> open() async {
     logger.fine('opening...');
@@ -605,28 +607,40 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
   @override
   void close() {
-    // Normal closure (1000): the connection is being closed intentionally, so
-    // the server can distinguish this from an abnormal drop.
-    _close(ws_status.normalClosure);
+    _close();
 
     // Assign disconnected state here, because calling public close() method
     // means that we don't intend to try reconnecting further.
     value = ConnectionStateDisconnected();
   }
 
-  void _close([int? closeCode]) {
-    logger.fine('closing channel...');
-
+  void _close() {
     final channel = _channel;
     if (channel != null) {
+      logger.info(
+        'closing channel with code=${ws_status.normalClosure} '
+        'reason=$_clientCloseReason',
+      );
+
+      // GKE's load balancer can surface a trailing 1006 after this local teardown.
+      // We intentionally ignore it.
+      system.errorTrackingService?.reportConnectionClosure(
+        ws_status.normalClosure,
+        _clientCloseReason,
+      );
+
       _failRequestsForChannel(
         channel,
         StackTrace.current,
       );
+
+      _sub?.cancel();
+      channel.sink.close(
+        ws_status.normalClosure,
+        _clientCloseReason,
+      );
     }
 
-    _sub?.cancel();
-    _channel?.sink.close(closeCode);
     _channel = null;
     _sub = null;
     _isConnected = false;
@@ -694,6 +708,9 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       channel,
       StackTrace.current,
     );
+
+    _channel = null;
+    _sub = null;
 
     _scheduleReconnect();
   }
