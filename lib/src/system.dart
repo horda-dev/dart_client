@@ -94,6 +94,10 @@ class HordaClientSystem {
   }
 
   void _registerLifecycleObserver() {
+    if (_lifecycleObserver != null) {
+      return;
+    }
+
     final WidgetsBinding binding;
     try {
       binding = WidgetsBinding.instance;
