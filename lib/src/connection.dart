@@ -190,6 +190,12 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
         return;
       }
 
+      // Keep this wake signal alive for the whole reconnect iteration. That
+      // lets foregrounding both interrupt a pending delay and reset retries
+      // when an in-progress connection attempt finishes.
+      final wake = Completer<void>();
+      _backoffWake = wake;
+
       // After 5 retries, simply use maxDelay.
       // Otherwise int overflow on try 55 will cause an absurdly large delay.
       // Ref: https://gitlab.com/horda/delurk/script/-/issues/12
@@ -205,22 +211,12 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       if (retries != 0) {
         logger.fine('reconnecting after ${delay.inSeconds} seconds...');
 
-        final wake = Completer<void>();
-        _backoffWake = wake;
-        var interrupted = false;
-
         await Future.any([
           Future.delayed(delay),
-          wake.future.then((_) => interrupted = true),
+          wake.future,
         ]);
 
-        // Only clear the field if it still refers to our completer; a
-        // concurrent open() may have installed a newer one.
-        if (identical(_backoffWake, wake)) {
-          _backoffWake = null;
-        }
-
-        if (interrupted) {
+        if (wake.isCompleted) {
           // The backoff was reset when app was foregrounded.
           retries = 0;
         }
@@ -229,18 +225,42 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
       // close() may have run while we were delayed; honor it before
       // attempting another connection.
       if (value is ConnectionStateDisconnected) {
+        if (identical(_backoffWake, wake)) {
+          _backoffWake = null;
+        }
+
         return;
       }
+
+      final foregroundedBeforeConnect = wake.isCompleted;
 
       try {
         connected = await _connect();
       } on ChannelDisposedWhileWaitingException {
         // A new websocket connection (another async open() call) is being opened
         // while waiting for the previous one. Stop execution to avoid mutating state.
+        if (identical(_backoffWake, wake)) {
+          _backoffWake = null;
+        }
+
         return;
       }
 
-      retries += 1;
+      // Only clear the field if it still refers to our completer; a
+      // concurrent open() may have installed a newer one.
+      if (identical(_backoffWake, wake)) {
+        _backoffWake = null;
+      }
+
+      final foregroundedDuringConnect =
+          !foregroundedBeforeConnect && wake.isCompleted;
+
+      if (foregroundedDuringConnect) {
+        // The app foregrounded while a connection attempt was in progress.
+        retries = 0;
+      } else {
+        retries += 1;
+      }
     } while (!connected);
 
     value = _isFirstTimeConnect
