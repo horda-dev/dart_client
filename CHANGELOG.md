@@ -1,3 +1,10 @@
+## 0.31.3
+
+- **FIX**: Fail in-flight WebSocket requests when their connection closes, preventing query hosts and view projections from hanging after reconnect.
+- **FIX**: Reconnect immediately when the app returns to the foreground.
+- **FIX**: Send and report intentional WebSocket closures as code 1000.
+- **FIX**: Revert connection error throttling.
+
 ## 0.31.2
 
 - **FIX**: Skip th first 3 connection error reporting to suppress Android DSN errors noise.

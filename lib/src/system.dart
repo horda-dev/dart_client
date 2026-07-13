@@ -73,10 +73,14 @@ class HordaClientSystem {
 
   final ValueNotifier<HordaAuthState> authState;
 
+  _AppLifecycleObserver? _lifecycleObserver;
+
   Future<void> start() async {
     logger.fine('starting client system...');
 
     kRegisterFluirMessage();
+
+    _registerLifecycleObserver();
 
     await conn.open();
 
@@ -84,7 +88,36 @@ class HordaClientSystem {
   }
 
   void stop() {
+    _unregisterLifecycleObserver();
+
     conn.close();
+  }
+
+  void _registerLifecycleObserver() {
+    if (_lifecycleObserver != null) {
+      return;
+    }
+
+    final WidgetsBinding binding;
+    try {
+      binding = WidgetsBinding.instance;
+    } catch (_) {
+      // start() called before runApp() or running inside unit test.
+      logger.fine('no widgets binding; skipping app lifecycle observer');
+      return;
+    }
+
+    final observer = _AppLifecycleObserver(conn.resetReconnectBackoff);
+    _lifecycleObserver = observer;
+    binding.addObserver(observer);
+  }
+
+  void _unregisterLifecycleObserver() {
+    final observer = _lifecycleObserver;
+    if (observer != null) {
+      WidgetsBinding.instance.removeObserver(observer);
+      _lifecycleObserver = null;
+    }
   }
 
   Future<void> reopen() async {
@@ -498,6 +531,20 @@ class HordaClientSystem {
   /// TODO: Remove when QuerySynchronizer is no longer needed
   /// Temporary fix for queryAndSubscribe/unsubscribe desync during widget element substitution
   final _querySynchronizer = QuerySynchronizer();
+}
+
+/// Observes app lifecycle. Requires an initialized Flutter binding.
+class _AppLifecycleObserver with WidgetsBindingObserver {
+  _AppLifecycleObserver(this._onResumed);
+
+  final VoidCallback _onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _onResumed();
+    }
+  }
 }
 
 /// Test implementation of [HordaClientSystem] for unit testing.
