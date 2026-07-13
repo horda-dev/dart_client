@@ -126,6 +126,12 @@ abstract class Connection implements ValueNotifier<HordaConnectionState> {
   ///
   /// [subs] - View subscriptions to remove
   Future<void> unsubscribeViews(Iterable<ActorViewSub> subs);
+
+  /// Resets the reconnection backoff and wakes any pending reconnect delay.
+  /// No-op when the connection is healthy, idle, or intentionally closed.
+  ///
+  /// Should be called when the app returned to the foreground.
+  void resetReconnectBackoff();
 }
 
 /// WebSocket implementation of the [Connection] interface.
@@ -195,7 +201,32 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
       if (retries != 0) {
         logger.fine('reconnecting after ${delay.inSeconds} seconds...');
-        await Future.delayed(delay);
+
+        final wake = Completer<void>();
+        _backoffWake = wake;
+        var interrupted = false;
+
+        await Future.any([
+          Future.delayed(delay),
+          wake.future.then((_) => interrupted = true),
+        ]);
+
+        // Only clear the field if it still refers to our completer; a
+        // concurrent open() may have installed a newer one.
+        if (identical(_backoffWake, wake)) {
+          _backoffWake = null;
+        }
+
+        if (interrupted) {
+          // The backoff was reset when app was foregrounded.
+          retries = 0;
+        }
+      }
+
+      // close() may have run while we were delayed; honor it before
+      // attempting another connection.
+      if (value is ConnectionStateDisconnected) {
+        return;
       }
 
       try {
@@ -238,6 +269,15 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   Future<void> reopen() async {
     close();
     await open();
+  }
+
+  @override
+  void resetReconnectBackoff() {
+    final wake = _backoffWake;
+    if (wake != null && !wake.isCompleted) {
+      logger.fine('resetting reconnect backoff');
+      wake.complete();
+    }
   }
 
   @override
@@ -688,6 +728,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   int _msgId = 0;
   bool _isConnected = false;
   bool _isFirstTimeConnect = true;
+  Completer<void>? _backoffWake;
   final _pending = <int, _PendingRequest>{};
   final _queue = Queue<_PendingRequest>();
   int _connectFailureCount = 0;

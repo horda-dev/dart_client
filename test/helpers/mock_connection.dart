@@ -30,6 +30,9 @@ class MockConnection extends ValueNotifier<HordaConnectionState>
   Future<void> reopen() async {}
 
   @override
+  void resetReconnectBackoff() {}
+
+  @override
   Future<QueryResult> query({
     required String actorId,
     required QueryDef def,
