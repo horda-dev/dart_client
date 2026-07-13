@@ -240,18 +240,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
         return;
       }
 
-      if (!connected) {
-        _connectFailureCount++;
-        if (_connectFailureCount >= 3) {
-          final err = _lastConnectError;
-          final stack = _lastConnectStack;
-          if (err != null && stack != null) {
-            system.errorTrackingService?.reportError(err, stack);
-          }
-          _connectFailureCount = 0;
-        }
-      }
-
       retries += 1;
     } while (!connected);
 
@@ -261,7 +249,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
     _isConnected = true;
     _isFirstTimeConnect = false;
-    _connectFailureCount = 0;
 
     _drainQueue();
 
@@ -506,8 +493,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     } catch (e, stack) {
       logger.warning('web socket connect exception, url($_url): $e');
 
-      _lastConnectError = e;
-      _lastConnectStack = stack;
+      system.errorTrackingService?.reportError(e, stack);
 
       _close();
 
@@ -757,9 +743,6 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
   Completer<void>? _backoffWake;
   final _pending = <int, _PendingRequest>{};
   final _queue = Queue<_PendingRequest>();
-  int _connectFailureCount = 0;
-  Object? _lastConnectError;
-  StackTrace? _lastConnectStack;
 }
 
 class ConnectionException implements Exception {
