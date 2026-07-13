@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:horda_core/horda_core.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
+import 'package:web_socket_channel/status.dart' as ws_status;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'system.dart';
@@ -604,14 +605,16 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
 
   @override
   void close() {
-    _close();
+    // Normal closure (1000): the connection is being closed intentionally, so
+    // the server can distinguish this from an abnormal drop.
+    _close(ws_status.normalClosure);
 
     // Assign disconnected state here, because calling public close() method
     // means that we don't intend to try reconnecting further.
     value = ConnectionStateDisconnected();
   }
 
-  void _close() {
+  void _close([int? closeCode]) {
     logger.fine('closing channel...');
 
     final channel = _channel;
@@ -623,7 +626,7 @@ final class WebSocketConnection extends ValueNotifier<HordaConnectionState>
     }
 
     _sub?.cancel();
-    _channel?.sink.close();
+    _channel?.sink.close(closeCode);
     _channel = null;
     _sub = null;
     _isConnected = false;
