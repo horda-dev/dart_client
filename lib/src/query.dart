@@ -975,10 +975,6 @@ abstract class ActorViewHost {
   );
 
   /// Whether projecting a change should notify widgets which depend on this view.
-  ///
-  /// Most view types notify for every projected change because they can mutate
-  /// their value in place. Value views override this to suppress rebuilds when
-  /// their value is unchanged.
   bool shouldNotifyDependents(dynamic previousValue) {
     return true;
   }
