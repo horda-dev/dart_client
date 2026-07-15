@@ -1,3 +1,7 @@
+## 0.31.4
+
+- **FIX**: Avoid rebuilding value-view dependents when an update does not change the value.
+
 ## 0.31.3
 
 - **FIX**: Fail in-flight WebSocket requests when their connection closes, preventing query hosts and view projections from hanging after reconnect.

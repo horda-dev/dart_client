@@ -974,6 +974,11 @@ abstract class ActorViewHost {
     dynamic previousValue,
   );
 
+  /// Whether projecting a change should notify widgets which depend on this view.
+  bool shouldNotifyDependents(dynamic previousValue) {
+    return true;
+  }
+
   void watch(ActorQueryPath path, ActorQueryPathFunc cb) {
     _watcher = cb;
   }
@@ -1181,6 +1186,8 @@ abstract class ActorViewHost {
         continue;
       }
 
+      final previousValue = _value;
+
       if (env.isOverwriting) {
         await _projectLast(env);
       } else {
@@ -1202,7 +1209,9 @@ abstract class ActorViewHost {
         _runChangeHandlers(change);
       }
 
-      _watcher?.call(ActorQueryPath.root(view.name));
+      if (shouldNotifyDependents(previousValue)) {
+        _watcher?.call(ActorQueryPath.root(view.name));
+      }
 
       logger.info('$actorId: projected $env');
     }
@@ -1338,6 +1347,11 @@ class ActorValueViewHost<T> extends ActorViewHost {
 
     logger.warning('$actorId: unknown event $event');
     return previousValue;
+  }
+
+  @override
+  bool shouldNotifyDependents(dynamic previousValue) {
+    return previousValue != value;
   }
 
   @override
