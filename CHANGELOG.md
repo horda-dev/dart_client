@@ -1,3 +1,7 @@
+## 0.32.0
+
+- **FEAT**: Add nullable attribute getters.
+
 ## 0.31.4
 
 - **FIX**: Avoid rebuilding value-view dependents when an update does not change the value.
