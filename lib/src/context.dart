@@ -341,7 +341,11 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
     return _builder.listItemValAttr<T>(sel, attrName, index);
   }
 
-  T? maybeListItemValueAttr<T>(ListSelector<Q> sel, String attrName, int index) {
+  T? maybeListItemValueAttr<T>(
+    ListSelector<Q> sel,
+    String attrName,
+    int index,
+  ) {
     return _builder.maybeListItemValAttr<T>(sel, attrName, index);
   }
 
