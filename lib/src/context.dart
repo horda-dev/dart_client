@@ -532,7 +532,7 @@ class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
   }
 
   T? refValueAttr<T>(RefIdSelector<Q> sel, String attrName) {
-    throw _builder.maybeRefValAttr(sel, attrName);
+    return _builder.maybeRefValAttr(sel, attrName);
   }
 
   String? listItem(ListSelector<Q> sel, int index) {
