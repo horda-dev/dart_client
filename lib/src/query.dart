@@ -983,6 +983,13 @@ abstract class ActorViewHost {
     _watcher = cb;
   }
 
+  void _notifyWatcher(ActorQueryPath path) {
+    final watcher = _watcher;
+    if (watcher != null) {
+      watcher(path);
+    }
+  }
+
   /// Note that on reconnect the hosts are not removed/stopped. The queries are re-run and the view hosts are re-attached.
   /// Account for that when updating [ActorQueryHost.run] and [attach] logic.
   ///
@@ -1470,7 +1477,7 @@ class ActorRefViewHost extends ActorViewHost {
 
     _attrHost = AttributesHost(
       '$parentLoggerName.${view.name}',
-      _watcher,
+      _notifyWatcher,
       view.name,
       view.attrs,
       system,
@@ -1848,7 +1855,7 @@ class ActorListViewHost extends ActorViewHost {
       final queryResAttrs = attrs[itemId];
       _attrHosts[itemId] = AttributesHost(
         parentLoggerName,
-        _watcher,
+        _notifyWatcher,
         view.name,
         view.attrs,
         system,
@@ -1924,7 +1931,7 @@ class ActorListViewHost extends ActorViewHost {
       _children[change.refId] = host;
       _attrHosts[change.refId] = AttributesHost(
         parentLoggerName,
-        _watcher,
+        _notifyWatcher,
         view.name,
         view.attrs,
         system,
