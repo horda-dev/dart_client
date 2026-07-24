@@ -983,6 +983,9 @@ abstract class ActorViewHost {
     _watcher = cb;
   }
 
+  /// Passed to attribute host for notifying dependents. This callback must be
+  /// used instead of a watcher instance, to keep attribute host in sync with
+  /// parent view host.
   void _notifyWatcher(ActorQueryPath path) {
     final watcher = _watcher;
     if (watcher != null) {
