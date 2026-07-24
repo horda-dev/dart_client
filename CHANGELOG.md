@@ -2,6 +2,7 @@
 
 - **FEAT**: Add nullable attribute getters.
 - **FIX**: Fix `MaybeEntityQueryDependencyBuilder.refValueAttr()` always throwing instead of returning.
+- **FIX**: Fix attribute projections not triggering dependent rebuilds.
 
 ## 0.31.4
 
