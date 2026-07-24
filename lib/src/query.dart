@@ -983,6 +983,16 @@ abstract class ActorViewHost {
     _watcher = cb;
   }
 
+  /// Passed to attribute host for notifying dependents. This callback must be
+  /// used instead of a watcher instance, to keep attribute host in sync with
+  /// parent view host.
+  void _notifyWatcher(ActorQueryPath path) {
+    final watcher = _watcher;
+    if (watcher != null) {
+      watcher(path);
+    }
+  }
+
   /// Note that on reconnect the hosts are not removed/stopped. The queries are re-run and the view hosts are re-attached.
   /// Account for that when updating [ActorQueryHost.run] and [attach] logic.
   ///
@@ -1470,7 +1480,7 @@ class ActorRefViewHost extends ActorViewHost {
 
     _attrHost = AttributesHost(
       '$parentLoggerName.${view.name}',
-      _watcher,
+      _notifyWatcher,
       view.name,
       view.attrs,
       system,
@@ -1492,12 +1502,28 @@ class ActorRefViewHost extends ActorViewHost {
     return _attrHost.valueAttr<T>(attrName);
   }
 
+  T? maybeValueAttr<T>(String attrName) {
+    if (refId == null) {
+      return null;
+    }
+
+    return _attrHost.maybeValueAttr<T>(attrName);
+  }
+
   int counterAttr(String attrName) {
     if (refId == null) {
       throw FluirError('null ref ${view.name} cannot have any attributes');
     }
 
     return _attrHost.counterAttr(attrName);
+  }
+
+  int? maybeCounterAttr(String attrName) {
+    if (refId == null) {
+      return null;
+    }
+
+    return _attrHost.maybeCounterAttr(attrName);
   }
 
   bool hasAttribute(String attrName) {
@@ -1682,6 +1708,23 @@ class ActorListViewHost extends ActorViewHost {
     return attrHost.valueAttr<T>(attrName);
   }
 
+  T? maybeValueAttr<T>(String attrName, int index) {
+    if (index < 0 || index >= items.length) {
+      throw FluirError('index $index is out of bounds for ${view.name}');
+    }
+
+    final item = items.elementAt(index);
+    final itemId = item.refId;
+
+    final attrHost = _attrHosts[itemId];
+
+    if (attrHost == null) {
+      return null;
+    }
+
+    return attrHost.maybeValueAttr<T>(attrName);
+  }
+
   int counterAttr(String attrName, int index) {
     if (index < 0 || index >= items.length) {
       throw FluirError('index $index is out of bounds for ${view.name}');
@@ -1699,6 +1742,23 @@ class ActorListViewHost extends ActorViewHost {
     }
 
     return attrHost.counterAttr(attrName);
+  }
+
+  int? maybeCounterAttr(String attrName, int index) {
+    if (index < 0 || index >= items.length) {
+      throw FluirError('index $index is out of bounds for ${view.name}');
+    }
+
+    final item = items.elementAt(index);
+    final itemId = item.refId;
+
+    final attrHost = _attrHosts[itemId];
+
+    if (attrHost == null) {
+      return null;
+    }
+
+    return attrHost.maybeCounterAttr(attrName);
   }
 
   ActorQueryHost itemHost(int index) {
@@ -1798,7 +1858,7 @@ class ActorListViewHost extends ActorViewHost {
       final queryResAttrs = attrs[itemId];
       _attrHosts[itemId] = AttributesHost(
         parentLoggerName,
-        _watcher,
+        _notifyWatcher,
         view.name,
         view.attrs,
         system,
@@ -1874,7 +1934,7 @@ class ActorListViewHost extends ActorViewHost {
       _children[change.refId] = host;
       _attrHosts[change.refId] = AttributesHost(
         parentLoggerName,
-        _watcher,
+        _notifyWatcher,
         view.name,
         view.attrs,
         system,
@@ -2697,6 +2757,28 @@ class AttributesHost {
     return attrValue;
   }
 
+  T? maybeValueAttr<T>(String attrName) {
+    final attr = _attrs[attrName];
+
+    if (attr == null) {
+      return null;
+    }
+
+    final attrValue = attr['value'];
+
+    if (attrValue == null) {
+      return null;
+    }
+
+    if (attrValue is! T) {
+      throw FluirError(
+        'view $viewName value attribute $id/$attrName type ${attrValue.runtimeType} does not match expect type $T',
+      );
+    }
+
+    return attrValue;
+  }
+
   int counterAttr(String attrName) {
     final attr = _attrs[attrName];
 
@@ -2707,6 +2789,28 @@ class AttributesHost {
     }
 
     final attrValue = attr['value'];
+
+    if (attrValue is! int) {
+      throw FluirError(
+        'view $viewName counter attribute $id/$attrName type ${attrValue.runtimeType} does not match expect type int',
+      );
+    }
+
+    return attrValue;
+  }
+
+  int? maybeCounterAttr(String attrName) {
+    final attr = _attrs[attrName];
+
+    if (attr == null) {
+      return null;
+    }
+
+    final attrValue = attr['value'];
+
+    if (attrValue == null) {
+      return null;
+    }
 
     if (attrValue is! int) {
       throw FluirError(

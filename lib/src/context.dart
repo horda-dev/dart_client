@@ -341,8 +341,24 @@ class EntityQueryDependencyBuilder<Q extends EntityQuery> {
     return _builder.listItemValAttr<T>(sel, attrName, index);
   }
 
+  T? maybeListItemValueAttr<T>(
+    ListSelector<Q> sel,
+    String attrName,
+    int index,
+  ) {
+    return _builder.maybeListItemValAttr<T>(sel, attrName, index);
+  }
+
   int listItemCounterAttr(ListSelector<Q> sel, String attrName, int index) {
     return _builder.listItemCounterAttr(sel, attrName, index);
+  }
+
+  int? maybeListItemCounterAttr(
+    ListSelector<Q> sel,
+    String attrName,
+    int index,
+  ) {
+    return _builder.maybeListItemCounterAttr(sel, attrName, index);
   }
 
   List<String> listItems(ListSelector<Q> sel) {
@@ -532,7 +548,7 @@ class MaybeEntityQueryDependencyBuilder<Q extends EntityQuery> {
   }
 
   T? refValueAttr<T>(RefIdSelector<Q> sel, String attrName) {
-    throw _builder.maybeRefValAttr(sel, attrName);
+    return _builder.maybeRefValAttr(sel, attrName);
   }
 
   String? listItem(ListSelector<Q> sel, int index) {
@@ -916,11 +932,7 @@ class _Builder<Q extends EntityQuery> {
       );
     }
 
-    if (!child.hasAttribute(attrName)) {
-      return null;
-    }
-
-    return child.valueAttr<T>(attrName);
+    return child.maybeValueAttr<T>(attrName);
   }
 
   T listItemValAttr<T>(ListSelector<Q> sel, String attrName, int index) {
@@ -948,6 +960,31 @@ class _Builder<Q extends EntityQuery> {
     return child.valueAttr<T>(attrName, index);
   }
 
+  T? maybeListItemValAttr<T>(ListSelector<Q> sel, String attrName, int index) {
+    var view = sel(host.query as Q);
+    var newPath = path.append(ActorQueryPath.root(view.name));
+
+    if (depend) {
+      element.depend(queryType, newPath, context);
+    }
+
+    var child = host.children[view.name];
+
+    if (child == null) {
+      throw FluirError(
+        'list view host for ${view.name} not found in ${host.debugId}',
+      );
+    }
+
+    if (child is! ActorListViewHost) {
+      throw FluirError(
+        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
+      );
+    }
+
+    return child.maybeValueAttr<T>(attrName, index);
+  }
+
   int listItemCounterAttr(ListSelector<Q> sel, String attrName, int index) {
     final view = sel(host.query as Q);
     final newPath = path.append(ActorQueryPath.root(view.name));
@@ -971,6 +1008,35 @@ class _Builder<Q extends EntityQuery> {
     }
 
     return child.counterAttr(attrName, index);
+  }
+
+  int? maybeListItemCounterAttr(
+    ListSelector<Q> sel,
+    String attrName,
+    int index,
+  ) {
+    final view = sel(host.query as Q);
+    final newPath = path.append(ActorQueryPath.root(view.name));
+
+    if (depend) {
+      element.depend(queryType, newPath, context);
+    }
+
+    final child = host.children[view.name];
+
+    if (child == null) {
+      throw FluirError(
+        'list view host for ${view.name} not found in ${host.debugId}',
+      );
+    }
+
+    if (child is! ActorListViewHost) {
+      throw FluirError(
+        'wrong host type found ${child.runtimeType}, expected: ActorListViewHost',
+      );
+    }
+
+    return child.maybeCounterAttr(attrName, index);
   }
 
   void addChangeHandler<C extends Change>(
