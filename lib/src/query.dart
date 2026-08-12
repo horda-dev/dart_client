@@ -1996,12 +1996,22 @@ class ActorListViewHost extends ActorViewHost {
       }
       _attrHosts.clear();
 
-      // Collect subs and stop child hosts without unsubcribing.
-      // This way we will send a single unsubscribe request for
-      // all child hosts, instead of one request per child host.
+      // Collect subs before stopping the hosts, a stopped host reports no subs.
+      // A single unsubscribe request is sent for all child hosts, instead of
+      // one request per child host.
+      final hosts = List.of(_children.values);
       final subs = <ActorViewSub>[];
-      for (final host in _children.values) {
+      for (final host in hosts) {
         subs.addAll(host.subscriptions());
+      }
+
+      // Keep list value and host maps consistent before any async gap.
+      // If we await unsubscribe first, widgets can still read cleared items
+      // from list value and resolve them to stopped hosts via itemHost().
+      _children.clear();
+      previousValue.clear();
+
+      for (final host in hosts) {
         host.stop(unsubscribe: false);
       }
 
@@ -2013,9 +2023,7 @@ class ActorListViewHost extends ActorViewHost {
 
       logger.info('unsubscribed on ListViewCleared');
 
-      _children.clear();
-
-      return previousValue..clear();
+      return previousValue;
     }
 
     logger.warning('$id: unknown event $change');
