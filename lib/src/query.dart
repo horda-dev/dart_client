@@ -585,6 +585,9 @@ class ActorQueryHost {
       system.errorTrackingService?.reportError(error, stackTrace);
     });
 
+    // Defer intersecting unsubscribes until this query has been finalized
+    final inFlight = system.beginQuery(actorId, qdef);
+
     try {
       // Use atomic query and subscribe operation
       // This prevents race conditions between query result and subscription start
@@ -601,7 +604,7 @@ class ActorQueryHost {
       // Finalize query subscriptions
       // This will publish empty change envelopes for already-subscribed views
       // and mark the in-flight query as complete
-      system.finalizeQuerySubscriptions(qdef, subscriptions());
+      system.finalizeQuerySubscriptions(inFlight, subscriptions());
 
       logger.info('$actorId: ran');
     } on HordaQueryException catch (error, s) {
@@ -618,6 +621,9 @@ class ActorQueryHost {
 
       _changeState(EntityQueryState.error);
     } finally {
+      // A failed query or attach must not leave the query in flight,
+      // otherwise every intersecting unsubscribe defers on it forever.
+      system.releaseQuery(inFlight);
       slowQueryTimeout.cancel();
     }
   }

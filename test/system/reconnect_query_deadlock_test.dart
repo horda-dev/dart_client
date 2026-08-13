@@ -186,11 +186,11 @@ void main() {
 
       // Start an in-flight query that shares the ref child query.
       final queryDef = _SpeechTextQuery().queryBuilder().build();
+      final inFlight = fixture.system.beginQuery('other-speech', queryDef);
       final failedQuery = expectLater(
-        fixture.system.queryAndSubscribe(
-          entityId: 'other-speech',
-          def: queryDef,
-        ),
+        fixture.system
+            .queryAndSubscribe(entityId: 'other-speech', def: queryDef)
+            .whenComplete(() => fixture.system.releaseQuery(inFlight)),
         throwsA(isA<ConnectionException>()),
       );
       await fixture.firstQueryReceived;
@@ -222,11 +222,11 @@ void main() {
 
       // Start an in-flight query that shares the list item child query.
       final queryDef = _UserNameQuery().queryBuilder().build();
+      final inFlight = fixture.system.beginQuery('other-user', queryDef);
       final failedQuery = expectLater(
-        fixture.system.queryAndSubscribe(
-          entityId: 'other-user',
-          def: queryDef,
-        ),
+        fixture.system
+            .queryAndSubscribe(entityId: 'other-user', def: queryDef)
+            .whenComplete(() => fixture.system.releaseQuery(inFlight)),
         throwsA(isA<ConnectionException>()),
       );
       await fixture.firstQueryReceived;
@@ -243,9 +243,11 @@ void main() {
           });
         });
 
+      final hostQueryDef = host.query.queryBuilder().build();
+
       host.attach('thread-1', result.build());
       fixture.system.finalizeQuerySubscriptions(
-        host.query.queryBuilder().build(),
+        fixture.system.beginQuery('thread-1', hostQueryDef),
         host.subscriptions(),
       );
 

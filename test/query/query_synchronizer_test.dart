@@ -10,20 +10,19 @@ void main() {
       sync = QuerySynchronizer();
     });
 
-    test('should register and complete a query', () async {
+    test('should register and release a query', () async {
       final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
 
       // Register query
-      final completer = sync.registerQuery(queryDef);
-      expect(sync.isQueryInFlight(queryDef), isTrue);
+      final query = sync.register('id1', queryDef);
+      expect(query.isDone, isFalse);
       expect(sync.inFlightCount, 1);
 
-      // Complete query
-      sync.completeQuery(queryDef);
+      // Release query
+      sync.release(query);
 
-      // Verify completer is completed
-      await expectLater(completer.future, completes);
-      expect(sync.isQueryInFlight(queryDef), isFalse);
+      await expectLater(query.done, completes);
+      expect(query.isDone, isTrue);
       expect(sync.inFlightCount, 0);
     });
 
@@ -32,7 +31,7 @@ void main() {
       var waitCompleted = false;
 
       // Register query
-      sync.registerQuery(queryDef);
+      final query = sync.register('id1', queryDef);
 
       // Start waiting (this should block until query completes)
       final waitFuture = sync.waitForQuery(queryDef).then((_) {
@@ -43,8 +42,8 @@ void main() {
       await Future.delayed(Duration(milliseconds: 10));
       expect(waitCompleted, isFalse);
 
-      // Complete the query
-      sync.completeQuery(queryDef);
+      // Release the query
+      sync.release(query);
 
       // Wait should now complete
       await waitFuture;
@@ -59,19 +58,17 @@ void main() {
       await expectLater(sync.waitForQuery(queryDef), completes);
     });
 
-    test('should handle cleanup after error', () async {
+    test('should handle release after error', () async {
       final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
 
       // Register query
-      final completer = sync.registerQuery(queryDef);
-      expect(sync.isQueryInFlight(queryDef), isTrue);
+      final query = sync.register('id1', queryDef);
+      expect(sync.inFlightCount, 1);
 
-      // Cleanup (simulating error handling)
-      sync.cleanupQuery(queryDef, completer);
+      // Release (simulating error handling)
+      sync.release(query);
 
-      // Verify cleanup completed the query
-      await expectLater(completer.future, completes);
-      expect(sync.isQueryInFlight(queryDef), isFalse);
+      await expectLater(query.done, completes);
       expect(sync.inFlightCount, 0);
     });
 
@@ -81,72 +78,91 @@ void main() {
       final queryDef3 = QueryDef('entity3', {'view1': ValueQueryDef()});
 
       // Register multiple queries
-      final completer1 = sync.registerQuery(queryDef1);
-      final completer2 = sync.registerQuery(queryDef2);
-      final completer3 = sync.registerQuery(queryDef3);
+      final query1 = sync.register('id1', queryDef1);
+      final query2 = sync.register('id2', queryDef2);
+      final query3 = sync.register('id3', queryDef3);
 
       expect(sync.inFlightCount, 3);
-      expect(sync.isQueryInFlight(queryDef1), isTrue);
-      expect(sync.isQueryInFlight(queryDef2), isTrue);
-      expect(sync.isQueryInFlight(queryDef3), isTrue);
 
-      // Complete them in different order
-      sync.completeQuery(queryDef2);
+      // Release them in a different order than they were registered
+      sync.release(query2);
       expect(sync.inFlightCount, 2);
-      await expectLater(completer2.future, completes);
+      expect(query1.isDone, isFalse);
+      expect(query3.isDone, isFalse);
+      await expectLater(query2.done, completes);
 
-      sync.completeQuery(queryDef1);
+      sync.release(query1);
       expect(sync.inFlightCount, 1);
-      await expectLater(completer1.future, completes);
+      await expectLater(query1.done, completes);
 
-      sync.completeQuery(queryDef3);
+      sync.release(query3);
       expect(sync.inFlightCount, 0);
-      await expectLater(completer3.future, completes);
+      await expectLater(query3.done, completes);
     });
 
-    test('should not fail when completing already completed query', () {
+    test('should not fail when releasing an already released query', () {
       final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
 
-      // Register and complete
-      sync.registerQuery(queryDef);
-      sync.completeQuery(queryDef);
+      final query = sync.register('id1', queryDef);
+      sync.release(query);
 
-      // Try to complete again - should not throw
-      expect(() => sync.completeQuery(queryDef), returnsNormally);
+      // Callers release from a finally block, so a second release must be safe
+      expect(() => sync.release(query), returnsNormally);
       expect(sync.inFlightCount, 0);
     });
 
-    test('should handle cleanup of non-current completer', () async {
+    test('should track identical concurrent queries independently', () {
       final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
 
-      // Register first query
-      final completer1 = sync.registerQuery(queryDef);
+      final first = sync.register('id1', queryDef);
+      final second = sync.register('id2', queryDef);
 
-      // Register same query again (overwrites)
-      final completer2 = sync.registerQuery(queryDef);
+      // Neither registration may displace the other
+      expect(sync.inFlightCount, 2);
 
-      // Cleanup first completer (should not remove query since completer2 is current)
-      sync.cleanupQuery(queryDef, completer1);
+      sync.release(first);
 
-      // Query should still be in-flight
-      expect(sync.isQueryInFlight(queryDef), isTrue);
+      expect(first.isDone, isTrue);
+      expect(second.isDone, isFalse);
       expect(sync.inFlightCount, 1);
-
-      // First completer should be completed though
-      await expectLater(completer1.future, completes);
-
-      // Complete the actual current query
-      sync.completeQuery(queryDef);
-      await expectLater(completer2.future, completes);
-      expect(sync.inFlightCount, 0);
     });
 
-    test('should allow wait and complete to race safely', () async {
+    test(
+      'should keep waiting when an identical later query is released first',
+      () async {
+        final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
+        var waitCompleted = false;
+
+        final first = sync.register('id1', queryDef);
+
+        final waitFuture = sync.waitForQuery(queryDef).then((_) {
+          waitCompleted = true;
+        });
+
+        // A second identical query starts while the unsubscribe is deferred.
+        final second = sync.register('id2', queryDef);
+
+        // Releasing the later query must not release the waiter, which is
+        // deferred on the first query only.
+        sync.release(second);
+
+        await Future.delayed(Duration(milliseconds: 10));
+        expect(waitCompleted, isFalse);
+        expect(first.isDone, isFalse);
+
+        sync.release(first);
+
+        await waitFuture;
+        expect(waitCompleted, isTrue);
+      },
+    );
+
+    test('should allow wait and release to race safely', () async {
       final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
       final results = <String>[];
 
       // Register query
-      sync.registerQuery(queryDef);
+      final query = sync.register('id1', queryDef);
 
       // Start multiple waiters
       final wait1 = sync
@@ -159,8 +175,8 @@ void main() {
           .waitForQuery(queryDef)
           .then((_) => results.add('wait3'));
 
-      // Complete query once
-      sync.completeQuery(queryDef);
+      // Release query once
+      sync.release(query);
 
       // All waiters should complete
       await Future.wait([wait1, wait2, wait3]);
@@ -184,7 +200,7 @@ void main() {
           ),
         });
 
-        sync.registerQuery(registeredQuery);
+        final query = sync.register('id1', registeredQuery);
 
         // Create a different query that only requests entity2/nestedView
         // This should still intersect because the registered query includes
@@ -204,8 +220,8 @@ void main() {
         await Future.delayed(Duration(milliseconds: 10));
         expect(waitCompleted, isFalse);
 
-        // Complete the registered query
-        sync.completeQuery(registeredQuery);
+        // Release the registered query
+        sync.release(query);
 
         // Wait should now complete because the nested query finished
         await waitFuture;
@@ -216,7 +232,7 @@ void main() {
     test('should not wait for non-intersecting queries', () async {
       // Register a query for entity1
       final registeredQuery = QueryDef('entity1', {'view1': ValueQueryDef()});
-      sync.registerQuery(registeredQuery);
+      final query = sync.register('id1', registeredQuery);
 
       // Create a query for entity2 with no overlap
       final nonIntersectingQuery = QueryDef('entity2', {
@@ -234,7 +250,21 @@ void main() {
       expect(waitCompleted, isTrue);
 
       // Clean up
-      sync.completeQuery(registeredQuery);
+      sync.release(query);
+    });
+
+    test('should match intersecting queries across different entity ids', () {
+      // Entity ids are not part of intersection matching: a single unsubscribe
+      // can cover child hosts belonging to many entities.
+      final queryDef = QueryDef('entity1', {'view1': ValueQueryDef()});
+
+      sync.register('id1', queryDef);
+
+      var waitCompleted = false;
+      sync.waitForQuery(queryDef).then((_) => waitCompleted = true);
+
+      expect(waitCompleted, isFalse);
+      expect(sync.inFlightCount, 1);
     });
   });
 }
