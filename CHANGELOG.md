@@ -1,6 +1,7 @@
 ## 0.32.1
 
 - **FIX**: Fix `ActorListViewHost` returning cleared items via `itemHost()` while unsubscribing from stopped hosts on `ListPageCleared`.
+- **FIX**: Fix query hosts hanging on `stop()` and leaving their views subscribed when identically structured queries are in flight at the same time.
 
 ## 0.32.0
 
