@@ -1,3 +1,7 @@
+## 0.32.1
+
+- **FIX**: Fix `ActorListViewHost` returning cleared items via `itemHost()` while unsubscribing from stopped hosts on `ListPageCleared`.
+
 ## 0.32.0
 
 - **FEAT**: Add nullable attribute getters.
