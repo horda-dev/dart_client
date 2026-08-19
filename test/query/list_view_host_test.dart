@@ -392,9 +392,11 @@ void main() {
             });
           });
 
+        final hostQueryDef = host.query.queryBuilder().build();
+
         host.attach('actor-1', result.build());
         blockingSystem.finalizeQuerySubscriptions(
-          host.query.queryBuilder().build(),
+          blockingSystem.beginQuery('actor-1', hostQueryDef),
           host.subscriptions(),
         );
 

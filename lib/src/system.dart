@@ -225,10 +225,10 @@ class HordaClientSystem {
   ///
   /// This should be called AFTER [ActorViewHost.attach], when [ActorViewHost] has set up change stream listeners.
   ///
-  /// [def] - The QueryDef that was executed
+  /// [inFlight] - The in-flight query handle returned by [beginQuery]
   /// [subs] - Subscriptions collected from [ActorQueryHost] after attach
   void finalizeQuerySubscriptions(
-    QueryDef def,
+    InFlightQuery inFlight,
     Iterable<ActorViewSub> subs,
   ) {
     final readyToSub = _incViewSubCount(subs);
@@ -248,7 +248,26 @@ class HordaClientSystem {
     }
 
     // Mark query tracking as complete
-    _querySynchronizer.completeQuery(def);
+    _querySynchronizer.release(inFlight);
+  }
+
+  /// Registers a query as in-flight, deferring intersecting unsubscribes until
+  /// it finishes.
+  ///
+  /// Call this before [queryAndSubscribe], and always release the returned
+  /// handle from a `finally` block, via [finalizeQuerySubscriptions] on success
+  /// or [releaseQuery] otherwise. A handle that is never released makes every
+  /// intersecting unsubscribe wait forever.
+  InFlightQuery beginQuery(EntityId entityId, QueryDef def) {
+    return _querySynchronizer.register(entityId, def);
+  }
+
+  /// Marks an in-flight query as no longer running.
+  ///
+  /// Safe to call after [finalizeQuerySubscriptions] has already released
+  /// [inFlight], so callers can release from a `finally` block unconditionally.
+  void releaseQuery(InFlightQuery inFlight) {
+    _querySynchronizer.release(inFlight);
   }
 
   Future<QueryResult> query({
@@ -258,14 +277,16 @@ class HordaClientSystem {
     return conn.query(actorId: entityId, def: def);
   }
 
+  /// Runs an atomic query and subscribe.
+  ///
+  /// Callers that need intersecting unsubscribes deferred until the resulting
+  /// subscriptions are counted must bracket this with [beginQuery] and
+  /// [releaseQuery].
   Future<QueryResult> queryAndSubscribe({
     required String entityId,
     required QueryDef def,
   }) async {
     logger.fine('$entityId: atomic query and subscribe...');
-
-    // Register in-flight query
-    final completer = _querySynchronizer.registerQuery(def);
 
     try {
       final result = await conn.queryAndSubscribe(
@@ -277,10 +298,6 @@ class HordaClientSystem {
       return result;
     } catch (e) {
       logger.severe('query and subscribe error $e');
-
-      // Note: completer is completed in finalizeQuerySubscriptions()
-      // We only clean up here if the query failed before finalization
-      _querySynchronizer.cleanupQuery(def, completer);
 
       rethrow;
     }
