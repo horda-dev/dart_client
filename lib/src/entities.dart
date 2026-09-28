@@ -37,6 +37,11 @@ class HordaEntity {
   void handle(LocalCommand cmd) {
     context.logger.fine('handling $cmd...');
 
+    if (_isStopped) {
+      context.logger.fine('stopped, dropping $cmd');
+      return;
+    }
+
     if (!canHandle(cmd)) {
       context.logger.warning('no handler registered for ${cmd.runtimeType}');
       return;
@@ -53,6 +58,7 @@ class HordaEntity {
 
   void stop() {
     context.logger.fine('stopping...');
+    _isStopped = true;
     _inbox.clear();
     context.logger.info('stopped');
   }
@@ -83,6 +89,7 @@ class HordaEntity {
   final _handlers = <Type, dynamic>{};
   final _inbox = Queue<LocalCommand>();
   var _idle = true;
+  var _isStopped = false;
 }
 
 abstract class HordaEntityHandlers {
@@ -179,6 +186,7 @@ abstract class WidgetEntityState<T extends WidgetEntity> extends State<T>
 
   @override
   void dispose() {
+    _actor.stop();
     _unregister();
 
     super.dispose();
