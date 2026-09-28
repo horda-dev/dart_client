@@ -1,3 +1,7 @@
+## 0.32.2
+
+- **FIX**: Stop `WidgetEntityState` command handling on dispose, so queued commands no longer run on a disposed state.
+
 ## 0.32.1
 
 - **FIX**: Fix `ActorListViewHost` returning cleared items via `itemHost()` while unsubscribing from stopped hosts on `ListPageCleared`.
