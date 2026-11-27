@@ -1,4 +1,6 @@
 import 'package:horda_core/horda_core.dart';
+// CupertinoActivityIndicator only; cupertino_ui would raise the Flutter floor.
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:logging/logging.dart';
 
